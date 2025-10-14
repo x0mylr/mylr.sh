@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /intel/
+
+Sitemap: https://mylr.sh/sitemap.xml

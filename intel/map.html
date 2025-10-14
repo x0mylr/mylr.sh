@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>The Daily Brief | Threat Map</title>
+
+    <!-- Leaflet CSS (with SRI) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="anonymous" />
+
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="anonymous" />
+
+    <!-- Threat Map CSS -->
+    <link rel="stylesheet" href="threat-map.css">
+
+    <style>
+        :root {
+            --burnt-sienna: #9a4c30;
+            --burnt-sienna-dark: #7a3520;
+            --burnt-sienna-light: #b85c40;
+            --burnt-sienna-glow: rgba(154, 76, 48, 0.3);
+            --charcoal-base: #0d0d0d;
+            --charcoal: #1a1a1a;
+            --charcoal-elevated: #242424;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-subtle: #333;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Courier New', monospace;
+            background: var(--charcoal-base);
+            color: var(--text-primary);
+        }
+
+        .map-header {
+            background: linear-gradient(180deg, var(--charcoal) 0%, var(--charcoal-elevated) 100%);
+            border-bottom: 2px solid var(--burnt-sienna);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .map-logo {
+            font-size: 1.4em;
+            color: var(--burnt-sienna);
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--burnt-sienna-glow);
+        }
+
+        .map-nav {
+            display: flex;
+            gap: 12px;
+        }
+
+        .map-nav a,
+        .map-nav button {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--burnt-sienna);
+            background: var(--charcoal-elevated);
+            font-family: inherit;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .map-nav a:hover,
+        .map-nav button:hover {
+            background: var(--burnt-sienna);
+            color: #fff;
+            box-shadow: 0 0 12px var(--burnt-sienna-glow);
+        }
+
+        .map-nav a:focus-visible,
+        .map-nav button:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        #map-container {
+            height: calc(100vh - 58px);
+            position: relative;
+        }
+
+        #threat-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading overlay */
+        .map-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: var(--charcoal);
+            border: 2px solid var(--burnt-sienna);
+            padding: 30px 40px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+        }
+
+        .map-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-subtle);
+            border-top-color: var(--burnt-sienna);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .map-loading-text {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <header class="map-header" role="banner">
+        <div class="map-logo" role="heading" aria-level="1">The Daily Brief | Threat Map</div>
+        <nav class="map-nav" aria-label="Map navigation">
+            <a href="/">Dashboard</a>
+            <button type="button" id="btn-refresh" aria-label="Refresh map data">Refresh</button>
+        </nav>
+    </header>
+
+    <div id="map-container">
+        <div id="threat-map" role="application" aria-label="Interactive threat intelligence map"></div>
+        <div class="map-loading" id="map-loading" role="status" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <div class="map-loading-text">Loading threat intelligence map...</div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS (with SRI) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin="anonymous"></script>
+
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
+
+    <!-- Leaflet Heat JS -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" crossorigin="anonymous"></script>
+
+    <!-- Threat Map JS -->
+    <script src="threat-map.js"></script>
+</body>
+</html>

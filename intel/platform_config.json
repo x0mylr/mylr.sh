@@ -1,0 +1,42 @@
+{
+  "platform": {
+    "name": "The Daily Brief",
+    "update_interval_minutes": 30,
+    "timezone": "UTC"
+  },
+  "defcon": {
+    "auto_calculate": true,
+    "manual_override": null,
+    "thresholds": {
+      "critical": 4.0,
+      "severe": 3.0,
+      "elevated": 2.0,
+      "guarded": 1.0
+    },
+    "weights": {
+      "critical_articles": 0.40,
+      "active_exploits": 0.30,
+      "apt_activity": 0.15,
+      "malware_prevalence": 0.15
+    }
+  },
+  "map": {
+    "enabled": true,
+    "default_zoom": 2,
+    "center_lat": 20.0,
+    "center_lon": 0.0,
+    "clustering_enabled": true,
+    "heatmap_enabled": true
+  },
+  "enrichment": {
+    "enabled": true,
+    "cache_duration_hours": 24,
+    "max_retries": 3,
+    "timeout_seconds": 10
+  },
+  "geocoding": {
+    "cache_enabled": true,
+    "provider": "nominatim",
+    "user_agent": "TheDailyBrief/1.0"
+  }
+}

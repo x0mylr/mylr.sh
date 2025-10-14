@@ -1,0 +1,33 @@
+# Secrets
+api_keys.json
+intel/api_keys.json
+
+# Generated output
+output/
+intel/output/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Caches
+data/
+
+# Logs
+logs/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+nul
+
+# Claude
+.claude/
+
+# Internal documentation (not for public repo)
+intel/EC2_SETUP.md
+intel/SESSION_HANDOFF.md
+intel/DEPLOYMENT_GUIDE.md
+intel/FILE_REFERENCE.md

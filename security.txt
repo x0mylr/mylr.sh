@@ -1,0 +1,3 @@
+Contact: mailto:josh@mylr.sh
+Preferred-Languages: en
+Canonical: https://mylr.sh/security.txt

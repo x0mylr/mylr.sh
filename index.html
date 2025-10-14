@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>mylr.sh | Security Research &amp; Threat Intelligence</title>
+    <meta name="description" content="Security research, threat intelligence, and defensive tradecraft. Tools and platforms for the security community.">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>&#128737;</text></svg>">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --burnt-sienna: #9a4c30;
+            --burnt-sienna-dark: #7a3520;
+            --burnt-sienna-light: #b85c40;
+            --burnt-sienna-glow: rgba(154, 76, 48, 0.3);
+            --charcoal-base: #0d0d0d;
+            --charcoal: #1a1a1a;
+            --charcoal-elevated: #242424;
+            --charcoal-hover: #2e2e2e;
+            --success: #44ff88;
+            --border-subtle: #333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666;
+        }
+
+        body {
+            font-family: 'Courier New', 'Monaco', monospace;
+            background: var(--charcoal-base);
+            color: var(--text-primary);
+            font-size: 16px;
+            line-height: 1.7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        a { color: var(--burnt-sienna-light); text-decoration: none; transition: color 0.2s; }
+        a:hover { color: var(--burnt-sienna); }
+        a:focus-visible { outline: 2px solid var(--burnt-sienna-light); outline-offset: 2px; }
+
+        /* --- Layout --- */
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 3rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 3.5rem 0 2.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .site-brand {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--burnt-sienna);
+            letter-spacing: 0.04em;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .header-nav a {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .header-nav a:hover { color: var(--burnt-sienna-light); }
+
+        /* --- Hero --- */
+        .hero {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .hero-text {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* --- Sections --- */
+        section {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        section:last-of-type { border-bottom: none; }
+
+        .section-label {
+            font-size: 0.95rem;
+            color: var(--burnt-sienna-light);
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            border-left: 2px solid var(--burnt-sienna);
+            padding-left: 0.75rem;
+        }
+
+        /* --- Two-column layout --- */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* --- Project Card --- */
+        .project-card {
+            display: block;
+            background: var(--charcoal);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 1.75rem;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+
+        .project-card:hover {
+            border-color: var(--burnt-sienna);
+            background: var(--charcoal-elevated);
+            box-shadow: 0 0 15px var(--burnt-sienna-glow);
+        }
+
+        .project-card:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        .project-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .project-status {
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--success);
+            background: rgba(68, 255, 136, 0.08);
+            border: 1px solid rgba(68, 255, 136, 0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 2px;
+        }
+
+        .project-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .project-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            line-height: 1.7;
+        }
+
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+            padding: 0.2rem 0.55rem;
+            border-radius: 2px;
+            letter-spacing: 0.05em;
+        }
+
+        .project-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border-subtle);
+            border-radius: 4px;
+            padding: 1.75rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-style: italic;
+            min-height: 100%;
+        }
+
+        /* --- Skills --- */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .skill-group h3 {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .skill-group ul { list-style: none; }
+
+        .skill-group li {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            padding: 0.35rem 0;
+            border-left: 1px solid var(--border-subtle);
+            padding-left: 0.75rem;
+            margin-bottom: 0.15rem;
+        }
+
+        /* --- Research --- */
+        .research-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.85;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .research-text p + p { margin-top: 1rem; }
+
+        .research-note {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-style: italic;
+            margin: 1.5rem auto 0;
+            max-width: 960px;
+        }
+
+        /* --- About --- */
+        .about-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 960px;
+            line-height: 1.85;
+            margin: 0 auto;
+        }
+
+        .about-text p + p { margin-top: 1rem; }
+
+        /* --- Footer --- */
+        footer {
+            padding: 2.5rem 0 3rem;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .social-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .social-links a {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .social-links a:hover { color: var(--burnt-sienna-light); }
+
+        .copyright {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 900px) {
+            .page { padding: 0 2rem; }
+            .two-col { grid-template-columns: 1fr; }
+            .skills-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            .page { padding: 0 1.25rem; }
+            header { padding: 2.5rem 0 1.5rem; }
+            .site-brand { font-size: 1.5rem; }
+            .hero-text { font-size: 1rem; }
+            section { padding: 2rem 0; }
+            .skills-grid { grid-template-columns: 1fr; }
+            footer { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <div class="site-brand">mylr.sh</div>
+            <nav class="header-nav" aria-label="Main navigation">
+                <a href="#projects">projects</a>
+                <a href="#skills">skills</a>
+                <a href="#research">research</a>
+                <a href="#about">about</a>
+            </nav>
+        </header>
+
+        <div class="hero">
+            <p class="hero-text">Most organizations are preparing for the last attack. Sophisticated adversaries are already operating three moves ahead. As AI accelerates both the speed and scale of offensive capability, that gap is widening faster than most defenders recognize.</p>
+        </div>
+
+        <section id="projects" aria-labelledby="projects-label">
+            <div class="section-label" id="projects-label">Projects</div>
+            <div class="two-col">
+                <a href="https://intel.mylr.sh" class="project-card" aria-label="The Daily Brief - Live threat intelligence platform">
+                    <div class="project-header">
+                        <span class="project-title">The Daily Brief</span>
+                        <span class="project-status">Live</span>
+                    </div>
+                    <p class="project-desc">Real-time threat intelligence dashboard aggregating 15+ feeds across vulnerability disclosures, malware campaigns, APT activity, and government advisories. Interactive threat map with geolocation and DEFCON-style threat scoring.</p>
+                    <div class="project-tags">
+                        <span class="tag">OSINT</span>
+                        <span class="tag">Threat Intel</span>
+                        <span class="tag">Feed Aggregation</span>
+                        <span class="tag">Geolocation</span>
+                        <span class="tag">Python</span>
+                        <span class="tag">Leaflet.js</span>
+                    </div>
+                </a>
+                <div class="project-placeholder">More projects coming soon.</div>
+            </div>
+        </section>
+
+        <section id="skills" aria-labelledby="skills-label">
+            <div class="section-label" id="skills-label">Skills &amp; Focus Areas</div>
+            <div class="skills-grid">
+                <div class="skill-group">
+                    <h3>Threat Intelligence</h3>
+                    <ul>
+                        <li>OSINT Collection &amp; Analysis</li>
+                        <li>IOC Extraction &amp; Enrichment</li>
+                        <li>Campaign Tracking</li>
+                        <li>MITRE ATT&amp;CK Mapping</li>
+                    </ul>
+                </div>
+                <div class="skill-group">
+                    <h3>Defensive Operations</h3>
+                    <ul>
+                        <li>Incident Response</li>
+                        <li>Detection Engineering</li>
+                        <li>Threat Hunting</li>
+                        <li>Log Analysis &amp; SIEM</li>
+                    </ul>
+                </div>
+                <div class="skill-group">
+                    <h3>Development</h3>
+                    <ul>
+                        <li>Python Automation</li>
+                        <li>Data Pipeline Design</li>
+                        <li>Web Application Security</li>
+                        <li>API Integration</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="research" aria-labelledby="research-label">
+            <div class="section-label" id="research-label">Research</div>
+            <div class="research-text">
+                <p>Indicators expire. Infrastructure rotates. The operational logic underneath a campaign, how adversaries select targets, sustain access, and adapt under pressure, persists across all of it.</p>
+                <p>My research focuses on that layer: behavioral patterns that hold regardless of tooling changes, supply chain compromise methodologies, identity infrastructure abuse, and the tradecraft of sophisticated actors targeting enterprise and critical infrastructure environments. The analytical standards come from environments where the cost of a wrong assessment was not a missed detection.</p>
+            </div>
+        </section>
+
+        <section id="about" aria-labelledby="about-label">
+            <div class="section-label" id="about-label">About</div>
+            <div class="about-text">
+                <p>My background is in intelligence operations, where adversary analysis was an operational requirement with consequences, not a reporting function. That foundation, the discipline around sourcing, the intolerance for speculation presented as assessment, the focus on behavior over artifacts, carries directly into the work on this site.</p>
+                <p>The tools and research I publish here are the output of applying that tradecraft to problems the commercial security industry consistently underestimates. I work with organizations that are serious about understanding what they are actually facing, not just what their current vendor stack can see. That work spans threat intelligence program design and maturation, adversary behavioral analysis for detection engineering and hunt operations, intelligence support to incident response where attribution and campaign context determine strategy, and assessment of security posture against specific named threat actors rather than generic risk categories.</p>
+            </div>
+        </section>
+
+        <footer>
+            <nav class="social-links" aria-label="Social links">
+                <a href="https://github.com/x0mylr" aria-label="GitHub">github</a>
+                <a href="https://x.com/x0mylr" aria-label="X">x.com</a>
+                <a href="mailto:josh@mylr.sh" aria-label="Email">josh@mylr.sh</a>
+            </nav>
+            <div class="copyright">&copy; 2026 mylr.sh</div>
+        </footer>
+    </div>
+</body>
+</html>

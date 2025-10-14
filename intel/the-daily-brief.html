@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>The Daily Brief | Threat Intelligence Platform</title>
+    <link rel="stylesheet" href="dashboard-enhancements.css">
+    <style>
+        /* ============================================
+           The Daily Brief - Threat Intelligence Platform
+           Professional Dashboard Design
+        ============================================ */
+
+        :root {
+            /* Core Brand - Burnt Sienna */
+            --burnt-sienna: #9a4c30;
+            --burnt-sienna-dark: #7a3520;
+            --burnt-sienna-light: #b85c40;
+            --burnt-sienna-glow: rgba(154, 76, 48, 0.3);
+
+            /* Backgrounds - Layered Depth */
+            --charcoal-base: #0d0d0d;
+            --charcoal: #1a1a1a;
+            --charcoal-elevated: #242424;
+            --charcoal-hover: #2e2e2e;
+
+            /* Tactical Colors */
+            --critical: #ff4444;
+            --high: #ff9944;
+            --medium: #44aaff;
+            --success: #44ff88;
+            --radar-green: #00ff41;
+            --intel-blue: #4fc3f7;
+
+            /* UI Elements */
+            --grid-lines: #2a2a2a;
+            --border-subtle: #333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--charcoal-base);
+            color: var(--text-primary);
+            font-family: 'Courier New', 'Monaco', monospace;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Grid Background Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(90deg, var(--grid-lines) 1px, transparent 1px),
+                linear-gradient(0deg, var(--grid-lines) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            opacity: 0.3;
+            z-index: 0;
+        }
+
+        /* Skip Navigation Link */
+        .skip-nav {
+            position: absolute;
+            top: -100%;
+            left: 0;
+            background: var(--burnt-sienna);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            z-index: 1000;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .skip-nav:focus {
+            top: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-areas:
+                "header header header"
+                "sidebar main context";
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+        }
+
+        /* ============================================
+           HEADER / COMMAND BAR
+        ============================================ */
+        .command-header {
+            grid-area: header;
+            background: linear-gradient(180deg, var(--charcoal) 0%, var(--charcoal-elevated) 100%);
+            border-bottom: 2px solid var(--burnt-sienna);
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .logo-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--burnt-sienna);
+            text-shadow: 0 0 10px var(--burnt-sienna-glow);
+        }
+
+        .subtitle {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: -5px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--radar-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px var(--radar-green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: var(--charcoal-elevated);
+            border: 1px solid var(--burnt-sienna);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn:hover {
+            background: var(--burnt-sienna);
+            box-shadow: 0 0 12px var(--burnt-sienna-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: var(--burnt-sienna);
+            border-color: var(--burnt-sienna-light);
+        }
+
+        /* Metrics Bar */
+        .metrics-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 16px;
+            background: var(--charcoal-base);
+            border-left: 3px solid var(--burnt-sienna);
+        }
+
+        .metric-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--burnt-sienna);
+        }
+
+        .metric-label {
+            font-size: 0.75em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ============================================
+           SIDEBAR - FILTERS & CONTROLS
+        ============================================ */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--charcoal);
+            border-right: 1px solid var(--border-subtle);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--burnt-sienna);
+            color: var(--burnt-sienna-light);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .section-count {
+            background: var(--burnt-sienna);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 4px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+
+        .filter-option:hover {
+            background: var(--charcoal-elevated);
+            border-left-color: var(--burnt-sienna);
+            transform: translateX(3px);
+        }
+
+        .filter-option input[type="checkbox"],
+        .filter-option input[type="radio"] {
+            margin-right: 10px;
+            accent-color: var(--burnt-sienna);
+        }
+
+        .custom-date-input {
+            width: 100%;
+            padding: 5px 8px;
+            background: var(--charcoal-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 3px;
+            color: var(--text-primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .custom-date-input:focus {
+            border-color: var(--burnt-sienna);
+            outline: none;
+        }
+
+        .filter-label {
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .filter-count {
+            color: var(--text-muted);
+            font-size: 0.85em;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--charcoal-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .view-btn:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        .view-btn.active,
+        .view-btn[aria-pressed="true"] {
+            background: var(--burnt-sienna);
+            border-color: var(--burnt-sienna-light);
+            color: var(--text-primary);
+            box-shadow: 0 0 12px var(--burnt-sienna-glow);
+        }
+
+        /* ============================================
+           MAIN FEED AREA
+        ============================================ */
+        .main-feed {
+            grid-area: main;
+            background: var(--charcoal);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--charcoal-base);
+            border: 2px solid var(--burnt-sienna);
+            padding: 12px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .search-prompt {
+            color: var(--burnt-sienna);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--radar-green);
+            font-family: inherit;
+            font-size: 1em;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-input:focus {
+            box-shadow: none;
+        }
+
+        /* Bulk Actions Bar */
+        .bulk-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--charcoal-elevated);
+            border-left: 3px solid var(--intel-blue);
+            margin-bottom: 15px;
+        }
+
+        .selection-info {
+            color: var(--intel-blue);
+            font-size: 0.9em;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .export-btn {
+            padding: 6px 12px;
+            background: var(--charcoal);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: var(--charcoal-hover);
+            border-color: var(--burnt-sienna);
+            color: var(--text-primary);
+        }
+
+        .export-btn:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        /* Intelligence Cards */
+        .intel-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .intel-card {
+            background: var(--charcoal-elevated);
+            border-left: 4px solid var(--burnt-sienna);
+            padding: 18px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .intel-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                var(--burnt-sienna-light),
+                transparent
+            );
+        }
+
+        .intel-card:hover {
+            background: var(--charcoal-hover);
+            border-left-width: 6px;
+            transform: translateX(3px);
+            box-shadow: -3px 4px 16px var(--burnt-sienna-glow);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-checkbox {
+            margin-top: 4px;
+            accent-color: var(--burnt-sienna);
+        }
+
+        .card-content {
+            flex: 1;
+        }
+
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            font-size: 0.75em;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .tag-incidents {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid var(--critical);
+            color: var(--critical);
+        }
+
+        .tag-research {
+            background: rgba(138, 43, 226, 0.2);
+            border: 1px solid #8a2be2;
+            color: #bb86fc;
+        }
+
+        .tag-advisories {
+            background: rgba(68, 170, 255, 0.2);
+            border: 1px solid var(--intel-blue);
+            color: var(--intel-blue);
+        }
+
+        .tag-source {
+            background: var(--charcoal);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+
+        .tag-score {
+            background: var(--burnt-sienna);
+            border: 1px solid var(--burnt-sienna-light);
+            color: var(--text-primary);
+        }
+
+        .card-summary {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .card-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-action {
+            color: var(--burnt-sienna);
+            text-decoration: none;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            padding: 0;
+        }
+
+        .card-action:hover {
+            color: var(--burnt-sienna-light);
+            text-shadow: 0 0 8px var(--burnt-sienna-glow);
+        }
+
+        .card-action:focus-visible {
+            outline: 2px solid var(--burnt-sienna-light);
+            outline-offset: 2px;
+        }
+
+        /* ============================================
+           CONTEXT PANEL - RIGHT SIDEBAR
+        ============================================ */
+        .context-panel {
+            grid-area: context;
+            background: var(--charcoal);
+            border-left: 1px solid var(--border-subtle);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: var(--charcoal-elevated);
+            border-left: 3px solid var(--burnt-sienna);
+        }
+
+        .panel-title {
+            font-size: 1em;
+            color: var(--burnt-sienna-light);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .trending-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 6px 0;
+            background: var(--charcoal);
+            border-left: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .trending-item:hover {
+            border-left-color: var(--burnt-sienna);
+            transform: translateX(3px);
+        }
+
+        .trending-rank {
+            color: var(--burnt-sienna);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .trending-name {
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .trending-count {
+            background: var(--burnt-sienna);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+
+        /* Chart Placeholder */
+        .mini-chart {
+            width: 100%;
+            height: 120px;
+            background: var(--charcoal-base);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding: 10px;
+            gap: 4px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--burnt-sienna-light), var(--burnt-sienna));
+            min-height: 20px;
+            transition: all 0.3s;
+        }
+
+        .chart-bar:hover {
+            background: linear-gradient(180deg, var(--burnt-sienna), var(--burnt-sienna-dark));
+            box-shadow: 0 0 8px var(--burnt-sienna-glow);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--charcoal-base);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--burnt-sienna);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--burnt-sienna-light);
+        }
+
+        /* Priority label colors via classes instead of inline styles */
+        .label-critical { color: #ff4444; }
+        .label-high { color: #ff9944; }
+        .label-medium { color: #44aaff; }
+
+        /* Loading / Empty States */
+        .feed-status {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        /* Live region for screen reader announcements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1400px) {
+            .app-container {
+                grid-template-columns: 250px 1fr;
+                grid-template-areas:
+                    "header header"
+                    "sidebar main";
+            }
+
+            .context-panel {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "header"
+                    "main";
+            }
+
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip Navigation -->
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+
+    <!-- Live Region for Dynamic Announcements -->
+    <div id="live-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="app-container">
+        <!-- COMMAND HEADER -->
+        <header class="command-header" role="banner">
+            <div class="header-top">
+                <div class="logo-section">
+                    <div class="logo" role="heading" aria-level="1">The Daily Brief</div>
+                </div>
+
+                <nav class="action-buttons" aria-label="Primary actions">
+                    <a href="map.html" class="btn" id="btn-visualize">THREAT MAP</a>
+                    <button type="button" class="btn" id="btn-analytics">ANALYTICS</button>
+                    <button type="button" class="btn btn-primary" id="btn-add-intel">+ ADD INTEL</button>
+                </nav>
+            </div>
+
+            <div class="metrics-bar" role="region" aria-label="Threat metrics summary">
+                <div class="metric" data-metric="total-events">
+                    <span class="metric-value" aria-describedby="metric-total-label">--</span>
+                    <span class="metric-label" id="metric-total-label">Total Events</span>
+                </div>
+                <div class="metric" data-metric="critical">
+                    <span class="metric-value" aria-describedby="metric-critical-label">--</span>
+                    <span class="metric-label" id="metric-critical-label">Critical</span>
+                </div>
+                <div class="metric" data-metric="active-apts">
+                    <span class="metric-value" aria-describedby="metric-apts-label">--</span>
+                    <span class="metric-label" id="metric-apts-label">Active APTs</span>
+                </div>
+                <div class="metric" data-metric="threat-level">
+                    <span class="metric-value" aria-describedby="metric-defcon-label">--</span>
+                    <span class="metric-label" id="metric-defcon-label">Threat Level</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- LEFT SIDEBAR - FILTERS -->
+        <aside class="sidebar" role="complementary" aria-label="Filters and controls">
+            <div class="view-toggle" role="toolbar" aria-label="View mode">
+                <button type="button" class="view-btn active" title="List View" data-view="list" aria-pressed="true">List</button>
+                <button type="button" class="view-btn" title="Graph View" data-view="graph" aria-pressed="false">Graph</button>
+            </div>
+
+            <div class="sidebar-section">
+                <fieldset>
+                    <legend class="section-header"><span>SCOPE</span></legend>
+                    <div class="filter-option">
+                        <input type="checkbox" id="scope-tactical" checked>
+                        <label for="scope-tactical" class="filter-label">Tactical</label>
+                        <span class="filter-count" data-count="scope-tactical" aria-label="Tactical count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="scope-strategic" checked>
+                        <label for="scope-strategic" class="filter-label">Strategic</label>
+                        <span class="filter-count" data-count="scope-strategic" aria-label="Strategic count">--</span>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="sidebar-section">
+                <fieldset>
+                    <legend class="section-header"><span>AUDIENCE</span></legend>
+                    <div class="filter-option">
+                        <input type="checkbox" id="aud-technical" checked>
+                        <label for="aud-technical" class="filter-label">Technical</label>
+                        <span class="filter-count" data-count="aud-technical" aria-label="Technical count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="aud-executive" checked>
+                        <label for="aud-executive" class="filter-label">Executive</label>
+                        <span class="filter-count" data-count="aud-executive" aria-label="Executive count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="aud-analyst" checked>
+                        <label for="aud-analyst" class="filter-label">Analyst</label>
+                        <span class="filter-count" data-count="aud-analyst" aria-label="Analyst count">--</span>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="sidebar-section">
+                <fieldset>
+                    <legend class="section-header">
+                        <span>CATEGORY</span>
+                        <span class="section-count" id="category-total" aria-label="Unique categories">--</span>
+                    </legend>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-all" checked>
+                        <label for="cat-all" class="filter-label">All</label>
+                        <span class="filter-count" data-count="cat-all" aria-label="All count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-apt">
+                        <label for="cat-apt" class="filter-label">APT</label>
+                        <span class="filter-count" data-count="cat-apt" aria-label="APT count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-vulnerability">
+                        <label for="cat-vulnerability" class="filter-label">Vulnerability</label>
+                        <span class="filter-count" data-count="cat-vulnerability" aria-label="Vulnerability count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-malware">
+                        <label for="cat-malware" class="filter-label">Malware</label>
+                        <span class="filter-count" data-count="cat-malware" aria-label="Malware count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-breach">
+                        <label for="cat-breach" class="filter-label">Breach</label>
+                        <span class="filter-count" data-count="cat-breach" aria-label="Breach count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-research">
+                        <label for="cat-research" class="filter-label">Research</label>
+                        <span class="filter-count" data-count="cat-research" aria-label="Research count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-advisory">
+                        <label for="cat-advisory" class="filter-label">Advisory</label>
+                        <span class="filter-count" data-count="cat-advisory" aria-label="Advisory count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-phishing">
+                        <label for="cat-phishing" class="filter-label">Phishing</label>
+                        <span class="filter-count" data-count="cat-phishing" aria-label="Phishing count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-supply_chain">
+                        <label for="cat-supply_chain" class="filter-label">Supply Chain</label>
+                        <span class="filter-count" data-count="cat-supply_chain" aria-label="Supply Chain count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="cat-network">
+                        <label for="cat-network" class="filter-label">Network</label>
+                        <span class="filter-count" data-count="cat-network" aria-label="Network count">--</span>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="sidebar-section">
+                <fieldset>
+                    <legend class="section-header"><span>PRIORITY</span></legend>
+                    <div class="filter-option">
+                        <input type="radio" name="priority" id="pri-all" checked>
+                        <label for="pri-all" class="filter-label">All Levels</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="priority" id="pri-critical">
+                        <label for="pri-critical" class="filter-label label-critical">Critical</label>
+                        <span class="filter-count" data-count="pri-critical" aria-label="Critical count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="priority" id="pri-high">
+                        <label for="pri-high" class="filter-label label-high">High</label>
+                        <span class="filter-count" data-count="pri-high" aria-label="High count">--</span>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="priority" id="pri-medium">
+                        <label for="pri-medium" class="filter-label label-medium">Medium</label>
+                        <span class="filter-count" data-count="pri-medium" aria-label="Medium count">--</span>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="sidebar-section">
+                <fieldset>
+                    <legend class="section-header"><span>TIME RANGE</span></legend>
+                    <div class="filter-option">
+                        <input type="radio" name="timerange" id="time-24h" checked>
+                        <label for="time-24h" class="filter-label">24 Hours</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="timerange" id="time-7d">
+                        <label for="time-7d" class="filter-label">7 Days</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="timerange" id="time-30d">
+                        <label for="time-30d" class="filter-label">30 Days</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" name="timerange" id="time-custom">
+                        <label for="time-custom" class="filter-label">Custom Range</label>
+                    </div>
+                    <div class="custom-range-inputs" id="custom-range-inputs" style="display:none; margin-top: 0.5rem;">
+                        <div class="filter-option">
+                            <label for="custom-from" class="filter-label" style="font-size:0.75rem; color:#666; margin-bottom:0.25rem; display:block;">From</label>
+                            <input type="date" id="custom-from" class="custom-date-input">
+                        </div>
+                        <div class="filter-option" style="margin-top:0.35rem;">
+                            <label for="custom-to" class="filter-label" style="font-size:0.75rem; color:#666; margin-bottom:0.25rem; display:block;">To</label>
+                            <input type="date" id="custom-to" class="custom-date-input">
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </aside>
+
+        <!-- MAIN FEED AREA -->
+        <main class="main-feed" id="main-content" role="main">
+            <form class="search-bar" role="search" aria-label="Search threat intelligence" onsubmit="return false;">
+                <label for="search-input" class="search-prompt" aria-hidden="true">brief@intel:~$</label>
+                <input
+                    type="search"
+                    id="search-input"
+                    class="search-input"
+                    placeholder="search intel... (try cve: ip: domain: mitre: apt:)"
+                    maxlength="256"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="Search threat intelligence"
+                >
+            </form>
+
+            <div class="bulk-actions" role="toolbar" aria-label="Bulk actions">
+                <div class="selection-info" aria-live="polite">
+                    <strong>0 selected</strong> of 0 events
+                </div>
+                <div class="export-buttons">
+                    <button type="button" class="export-btn" data-action="select-all">SELECT ALL</button>
+                    <button type="button" class="export-btn" data-action="clear">CLEAR</button>
+                    <button type="button" class="export-btn" data-action="export-csv">CSV</button>
+                    <button type="button" class="export-btn" data-action="export-markdown">MARKDOWN</button>
+                    <button type="button" class="export-btn" data-action="export-pdf">PDF</button>
+                    <button type="button" class="export-btn" data-action="export-stix">STIX</button>
+                </div>
+            </div>
+
+            <!-- Dynamic feed rendered by JS; loading state shown initially -->
+            <div class="intel-feed" role="feed" aria-label="Threat intelligence feed" aria-busy="true">
+                <div class="feed-status">
+                    Loading threat intelligence data...
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT CONTEXT PANEL -->
+        <aside class="context-panel" role="complementary" aria-label="Threat context and trends">
+            <section class="panel-section">
+                <h2 class="panel-title">TRENDING ATT&amp;CK</h2>
+                <div class="trending-attacks" role="list" aria-label="Trending ATT&CK techniques">
+                    <div class="no-data">Loading ATT&amp;CK data...</div>
+                </div>
+            </section>
+
+            <section class="panel-section">
+                <h2 class="panel-title">SECTORS AFFECTED</h2>
+                <div class="mini-chart" id="sector-chart" role="img" aria-label="Sectors affected bar chart">
+                    <!-- Populated dynamically by JS -->
+                </div>
+                <div class="sector-list" role="list" aria-label="Affected sectors list">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </section>
+
+            <section class="panel-section">
+                <h2 class="panel-title">GEOGRAPHIC HOTSPOTS</h2>
+                <div class="geo-list" role="list" aria-label="Geographic hotspots">
+                    <div class="no-data">Loading geo data...</div>
+                </div>
+            </section>
+
+            <section class="panel-section">
+                <h2 class="panel-title">COMMON TTPS</h2>
+                <div class="ttps-list" role="list" aria-label="Common tactics, techniques and procedures">
+                    <div class="no-data">Loading TTP data...</div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <script src="feed-dashboard.js"></script>
+</body>
+</html>
