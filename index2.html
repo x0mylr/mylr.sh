@@ -1,0 +1,794 @@
+import React, { useEffect, useState } from "react";
+
+/**
+ * Utilities (pure, testable)
+ */
+export function buildShodanUrl(query: string): string {
+  return `https://www.shodan.io/search?query=${encodeURIComponent(query)}`;
+}
+
+export function getTipText(raw: string): string {
+  return raw.toLowerCase().startsWith("/tip ") ? raw.slice(5).trim() : "";
+}
+
+// Async SHA‑256 helper (hex)
+export async function sha256Hex(input: string): Promise<string> {
+  const enc = new TextEncoder();
+  const data = enc.encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const bytes = Array.from(new Uint8Array(digest));
+  return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Lightweight self-tests (run once on mount in browser)
+ * These are smoke tests to guard against regressions.
+ */
+function SelfTests() {
+  useEffect(() => {
+    (async () => {
+      try {
+        console.group("mylr.sh self-tests");
+        // Shodan URL encoding
+        console.assert(
+          buildShodanUrl("org:example.com port:443 country:US") ===
+            "https://www.shodan.io/search?query=org%3Aexample.com%20port%3A443%20country%3AUS",
+          "Shodan URL encoding failed"
+        );
+        // Tip extraction
+        console.assert(
+          getTipText("/tip remember to use your brain") ===
+            "remember to use your brain",
+          "Tip parsing failed"
+        );
+        console.assert(
+          getTipText("/tip   ") === "",
+          "Empty tip should return empty string"
+        );
+        console.assert(
+          getTipText("motd") === "",
+          "Non-tip command should return empty string"
+        );
+        // SHA-256 known vectors
+        const h1 = await sha256Hex("abc");
+        console.assert(
+          h1 ===
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+          "SHA-256 test vector (abc) failed"
+        );
+        const h2 = await sha256Hex("");
+        console.assert(
+          h2 ===
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "SHA-256 test vector (empty) failed"
+        );
+        console.groupEnd();
+      } catch (e) {
+        console.error("Self-test error:", e);
+      }
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-[#0a0e1a] text-[#e8eaed]">
+      <SelfTests />
+      {/* Top Nav */}
+      <header className="sticky top-0 z-50 backdrop-blur bg-[#0a0e1a]/90 border-b border-[#cc5500]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="font-semibold tracking-wide text-[#cc5500]">mylr.sh</div>
+          <nav className="hidden md:flex gap-6 text-sm">
+            <a href="#labs" className="hover:text-[#cc5500]">
+              tools
+            </a>
+            <a href="#feeds" className="hover:text-[#cc5500]">
+              feeds
+            </a>
+            <a href="#attack" className="hover:text-[#cc5500]">
+              mitre ATT&CK
+            </a>
+            <a href="#briefs" className="hover:text-[#cc5500]">
+              research
+            </a>
+            <a href="#about" className="hover:text-[#cc5500]">
+              about
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="border-b border-zinc-800">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <h1 className="text-3xl sm:text-4xl font-bold mt-2">
+            Real‑world Security Research & Hands‑on Labs
+          </h1>
+          <p className="text-zinc-400 mt-3 max-w-2xl">
+            analysis, tradecraft, and interactive resources
+          </p>
+          {/* Burnt orange notification */}
+          <div className="mt-2 text-sm text-[#cc5500] font-mono">check the motd</div>
+        </div>
+      </section>
+
+      {/* Tools Section */}
+      <section id="labs" className="border-b border-zinc-800">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <div className="flex items-end justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-xs text-[#cc5500] font-mono">// tools</p>
+              <h2 className="text-2xl font-semibold">Tools</h2>
+              <p className="text-zinc-400 text-sm">
+                Quick access to external research utilities and enrichment engines.
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Terminal (square) */}
+          <article className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4 mt-6">
+            <h3 className="font-semibold text-lg">Terminal</h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              Type <span className="font-mono">help</span> for all commands. Quick
+              start: <span className="font-mono">motd</span>,
+              <span className="font-mono"> /tip &lt;text&gt;</span>,
+              <span className="font-mono"> vt &lt;ioc&gt;</span>,
+              <span className="font-mono"> otx &lt;ioc&gt;</span>,
+              <span className="font-mono"> shodan &lt;query&gt;</span>,
+              <span className="font-mono"> mitre &lt;TXXXX[.XXX]&gt;</span>,
+              <span className="font-mono"> cve &lt;CVE-YYYY-NNNN&gt;</span>.
+            </p>
+            <div className="mt-3 flex flex-col sm:flex-row gap-6">
+              {/* Square shell */}
+              <div className="bg-zinc-950/70 border border-zinc-800 rounded-xl overflow-hidden w-full sm:w-[420px] aspect-square flex flex-col">
+                <div className="px-3 py-2 text-xs font-mono text-zinc-400 border-b border-zinc-800">
+                  mylr.sh :: interactive shell
+                </div>
+                <div className="p-3 flex-1 min-h-0">
+                  <TerminalInput />
+                </div>
+              </div>
+
+              {/* Quick links + Shodan */}
+              <div className="grid sm:grid-cols-1 gap-4 flex-1">
+                {/* Shodan search */}
+                <article className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4">
+                  <h3 className="font-semibold text-base">Shodan</h3>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    Search the Internet of Exposed Things. IPs, ports, banners,
+                    and vulns.
+                  </p>
+                  <ShodanSearch />
+                </article>
+
+                {[
+                  {
+                    title: "VirusTotal",
+                    link: "https://www.virustotal.com/",
+                    desc: "Analyze files, URLs, domains, and IPs with aggregated antivirus and sandbox data.",
+                  },
+                  {
+                    title: "AlienVault OTX",
+                    link: "https://otx.alienvault.com/",
+                    desc: "Open Threat Exchange for community-sourced indicators, pulses, and threat groups.",
+                  },
+                  {
+                    title: "dan.me.uk",
+                    link: "https://dan.me.uk/",
+                    desc: "Public IP and ASN intelligence tools with geolocation and abuse lookups.",
+                  },
+                ].map((tool) => (
+                  <article
+                    key={tool.title}
+                    className="bg-[#141b2d] border border-zinc-800 hover:border-[#cc5500] rounded-2xl p-4 transition"
+                  >
+                    <h3 className="font-semibold text-base">
+                      <a
+                        href={tool.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-[#cc5500]"
+                      >
+                        {tool.title}
+                      </a>
+                    </h3>
+                    <p className="text-sm text-zinc-400 mt-1">{tool.desc}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      {/* Threat Feeds Section */}
+      <section id="feeds" className="border-b border-zinc-800">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <p className="text-xs text-[#cc5500] font-mono">// feeds</p>
+          <h2 className="text-2xl font-semibold">Threat Feeds</h2>
+          <p className="text-zinc-400 text-sm">
+            Aggregated public RSS/Atom. Filter by source, tag, or ATT&CK. (Wire
+            your serverless proxy to avoid CORS.)
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              "All",
+              "CISA",
+              "NVD",
+              "CERT",
+              "Vendor IR",
+              "Research blogs",
+              "GTIG",
+              "Emerging Threats",
+              "Bleeping Computer",
+              "Hacker News",
+            ].map((tag) => (
+              <button
+                key={tag}
+                className="text-sm px-3 py-1.5 rounded border border-zinc-700 bg-[#141b2d] hover:border-[#cc5500]"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <article
+                key={i}
+                className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4"
+              >
+                <div className="text-xs text-zinc-400">Oct 14, 2025 • CISA</div>
+                <a href="#" className="block mt-1 font-semibold hover:text-[#cc5500]">
+                  KEV update: actively exploited vulnerability in VPN gateway
+                </a>
+                <p className="text-sm text-zinc-400 mt-2">
+                  Short summary auto‑generated from feed item. Tags: T1190,
+                  CVE‑2025‑xxxx.
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* MITRE ATT&CK Browser */}
+      <section id="attack" className="border-b border-zinc-800">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <p className="text-xs text-[#cc5500] font-mono">// mitre ATT&CK</p>
+          <h2 className="text-2xl font-semibold">ATT&CK Technique Browser</h2>
+          <p className="text-zinc-400 text-sm">
+            Client‑side search across a local JSON of techniques. Swap in
+            TAXII/CTI feed later.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <input
+              placeholder="Search techniques or IDs (e.g., T1055)"
+              className="bg-[#141b2d] border border-zinc-700 rounded px-3 py-2 text-sm w-full md:w-96"
+            />
+            <select className="bg-[#141b2d] border border-zinc-700 rounded px-3 py-2 text-sm">
+              {[
+                "All tactics",
+                "Initial Access",
+                "Execution",
+                "Persistence",
+                "Privilege Escalation",
+                "Defense Evasion",
+                "Credential Access",
+                "Discovery",
+                "Lateral Movement",
+                "Collection",
+                "Exfiltration",
+                "Command and Control",
+                "Impact",
+              ].map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[
+              {
+                id: "T1055.012",
+                name: "Process Injection: Process Hollowing",
+                tactic: "Defense Evasion, Privilege Escalation",
+                det: "Detect suspicious creation of suspended processes followed by section mapping and thread context changes.",
+                refs: ["https://attack.mitre.org/techniques/T1055/012/"],
+              },
+              {
+                id: "T1566.001",
+                name: "Phishing: Spearphishing Attachment",
+                tactic: "Initial Access",
+                det: "Block risky file types; sandbox detonation; inspect archive abuse patterns.",
+                refs: ["https://attack.mitre.org/techniques/T1566/001/"],
+              },
+            ].map((t) => (
+              <article
+                key={t.id}
+                className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">{t.name}</h3>
+                  <span className="text-xs font-mono text-zinc-400">{t.id}</span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">{t.tactic}</p>
+                <p className="text-sm text-zinc-300 mt-3">{t.det}</p>
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {t.refs.map((r) => (
+                    <a
+                      key={r}
+                      href={r}
+                      className="text-xs underline underline-offset-2 decoration-dotted hover:text-[#cc5500]"
+                    >
+                      ref
+                    </a>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Research Section */}
+      <section id="briefs" className="border-b border-zinc-800">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <p className="text-xs text-[#cc5500] font-mono">// research</p>
+          <h2 className="text-2xl font-semibold">Research</h2>
+          <p className="text-zinc-400 text-sm">
+            Detailed investigations, campaigns, and lab reports with IOCs, TTPs,
+            and defensive actions.
+          </p>
+
+          <div className="mt-6 grid md:grid-cols-2 gap-4">
+            <article className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">
+                  PureRAT campaign: infostealer → RAT pivot
+                </h3>
+                <span className="text-xs font-mono text-zinc-400">X0-IB-2025-01</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Oct 14, 2025 • T1566.001 / T1055.012 / T1562.001
+              </p>
+              <p className="text-sm text-zinc-300 mt-3">
+                Key Findings: DLL sideloading, staged Python loaders, AMSI/ETW
+                patch, TLS‑pinned C2. Mitigate with blocklists, AMSI integrity
+                checks, and ETW tamper alerts.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <a
+                  href="#"
+                  className="px-3 py-1.5 text-sm border border-[#cc5500] text-[#0a0e1a] bg-[#cc5500] rounded"
+                >
+                  Read
+                </a>
+                <a
+                  href="#"
+                  className="px-3 py-1.5 text-sm border border-zinc-700 text-zinc-200 rounded"
+                >
+                  IOC list
+                </a>
+              </div>
+            </article>
+            <article className="bg-[#141b2d] border border-zinc-800 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">
+                  WPA2 handshake capture & detections
+                </h3>
+                <span className="text-xs font-mono text-zinc-400">X0-IB-2025-02</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">Oct 10, 2025 • T1557 / T1040</p>
+              <p className="text-sm text-zinc-300 mt-3">
+                Operational lab mapping deauth + airodump workflow to detections
+                and mitigations for enterprise Wi‑Fi.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <a
+                  href="#"
+                  className="px-3 py-1.5 text-sm border border-[#cc5500] text-[#0a0e1a] bg-[#cc5500] rounded"
+                >
+                  Read
+                </a>
+                <a
+                  href="#"
+                  className="px-3 py-1.5 text-sm border border-zinc-700 text-zinc-200 rounded"
+                >
+                  Download
+                </a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* About / Footer */}
+      <section id="about">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <p className="text-xs text-[#cc5500] font-mono">// about</p>
+          <h2 className="text-2xl font-semibold">Task & Purpose</h2>
+          <p className="mt-3 text-sm text-zinc-300 max-w-3xl">
+            Empowering the security community to strengthen our collective
+            defense to aggregate and analyze shared threat intelligence, map
+            adversary techniques to ATT&CK, and contribute actionable detection
+            content that benefits defenders everywhere.
+          </p>
+
+          <div className="mt-6 border-t border-zinc-800 pt-6 text-sm text-zinc-500 flex flex-wrap gap-4 justify-between items-center">
+            {/* Bottom‑left: copyright */}
+            <div className="flex items-center gap-4">
+              <div>© 2025  Joshua Miller [x0mylr]. All rights reserved</div>
+            </div>
+
+            {/* Bottom‑right: icons for GitHub + RSS + X + LinkedIn + email */}
+            <div className="flex items-center gap-4">
+              <a aria-label="GitHub" className="hover:text-[#cc5500]" href="#">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.012c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.009-.866-.013-1.7-2.782.605-3.369-1.342-3.369-1.342-.454-1.156-1.11-1.465-1.11-1.465-.908-.62.069-.607.069-.607 1.003.07 1.53 1.03 1.53 1.03.892 1.528 2.341 1.087 2.91.832.091-.647.35-1.087.636-1.337-2.22-.253-4.555-1.112-4.555-4.949 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.27.098-2.646 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.376.203 2.393.1 2.646.64.7 1.028 1.595 1.028 2.688 0 3.846-2.339 4.694-4.566 4.943.359.31.678.92.678 1.855 0 1.338-.012 2.419-.012 2.748 0 .268.18.58.688.482A10.013 10.013 0 0 0 22 12.012C22 6.484 17.523 2 12 2Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+              <a aria-label="RSS" className="hover:text-[#cc5500]" href="#">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path d="M6.18 17.82A2.18 2.18 0 1 1 2 17.82a2.18 2.18 0 0 1 4.18 0ZM2 9.64v3.09A9.27 9.27 0 0 1 11.27 22h3.09C14.36 15.44 8.56 9.64 2 9.64Zm0-7.64v3.09C10.61 5.09 18.91 13.39 18.91 23h3.09C22 11.85 12.15 2 2 2Z" />
+                </svg>
+              </a>
+              <a aria-label="Twitter" className="hover:text-[#cc5500]" href="#">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path d="M18.244 2.25h3.143l-6.873 7.847 8.072 11.653H16.31l-5.03-6.58-5.752 6.58H2.386l7.358-8.41L1.95 2.25h7.04l4.543 6.047 4.711-6.047Zm-1.103 19.5h1.74L7.01 3.19H5.17l11.971 18.56Z" />
+                </svg>
+              </a>
+              <a aria-label="LinkedIn" className="hover:text-[#cc5500]" href="#">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8.98h5V24H0zM8.48 8.98H13v2.05h.07c.63-1.19 2.17-2.45 4.47-2.45 4.78 0 5.66 3.15 5.66 7.25V24h-5v-6.53c0-1.56-.03-3.57-2.18-3.57-2.18 0-2.52 1.7-2.52 3.45V24h-5V8.98z" />
+                </svg>
+              </a>
+              <a className="hover:text-[#cc5500]" href="mailto:josh@mylr.sh">
+                josh@mylr.sh
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Interactive Terminal Component — handles tips, helper commands,
+ * quick pivots to VT/OTX/Shodan/urlscan, and easter eggs.
+ */
+function TerminalInput() {
+  const tips = [
+    "Think before you click. Hover links. Verify senders.",
+    "Use a password manager. Unique + long beats clever.",
+    "MFA on everything. Push fatigue is an attack surface.",
+    "Least privilege: access only what you need, when you need it.",
+    "Update fast. Patching closes more doors than any firewall.",
+    "Backups matter. Offline + tested restores.",
+    "Report suspected phishing—don’t investigate it yourself.",
+    "Lock your screen. Physical security is security.",
+    "Review OAuth app grants quarterly.",
+    "Public Wi‑Fi? Assume hostile. Use a VPN and disable auto‑join.",
+  ];
+
+  const fortunes = [
+    "Blue team wins by inches—measure, then move.",
+    "Great detections are documented detections.",
+    "Logs are clues. Keep them close and clean.",
+    "If it's not reproducible, it's not real.",
+  ];
+
+  const glossary: Record<string, string> = {
+    ioc: "Indicator of Compromise: observable that suggests intrusion (IP, hash, URL, domain).",
+    tactic:
+      "MITRE ATT&CK tactic: the adversary's high-level objective (e.g., Initial Access).",
+    c2: "Command & Control: attacker mechanisms to communicate with compromised hosts.",
+    sigma:
+      "Sigma: generic SIEM detection rule format; convert to your platform.",
+    yara:
+      "YARA: pattern matching rules for files/memory to identify malware families.",
+  };
+
+  const [value, setValue] = useState("");
+  const [history, setHistory] = useState<string[]>([
+    "Type 'help' to see available commands. Try: motd, vt <ioc>, otx <ioc>, shodan <query>.",
+  ]);
+
+  const print = (line: string) => setHistory((h) => [...h, line]);
+  const openExternal = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+  const rollTip = () => {
+    const i = Math.floor(Math.random() * tips.length);
+    print(`MOTD: ${tips[i]}`);
+  };
+
+  const cmdHelp = (arg?: string) => {
+    const base = [
+      "Commands:",
+      "  help [cmd]        Show help or details for a specific command",
+      "  motd | fortune    Print a random security tip / blue‑team fortune",
+      "  clear             Clear the screen",
+      "  /tip <text>       Post a custom tip",
+      "  whoami            Print terminal persona",
+      "  date              Show current date/time",
+      "  b64e <text>       Base64‑encode text",
+      "  b64d <text>       Base64‑decode text",
+      "  hash <text>       SHA‑256 of text (hex)",
+      "  vt <ioc>          Open VirusTotal search",
+      "  otx <ioc>         Open AlienVault OTX search",
+      "  urlscan <query>   Open urlscan.io search",
+      "  shodan <query>    Open Shodan search",
+      "  mitre <tech>      Open ATT&CK technique (e.g., T1055 or T1055.012)",
+      "  cve <id>          Open NVD page for CVE",
+      "  learn <topic>     Quick glossary (ioc, tactic, c2, sigma, yara)",
+      "  hunt              Begin a mini‑hunt (easter egg)",
+      "  konami            Secret key sequence (easter egg)",
+    ];
+    if (!arg) {
+      base.forEach(print);
+      return;
+    }
+    const details: Record<string, string> = {
+      vt: "vt <ioc> — Opens VirusTotal global search for IP, domain, URL, or hash.",
+      otx: "otx <ioc> — Opens AlienVault OTX search for pulses and indicators.",
+      shodan:
+        "shodan <query> — Opens Shodan with your query (e.g., org:example.com port:443).",
+      urlscan: "urlscan <query> — Opens urlscan.io search (e.g., domain:example.com)",
+      mitre: "mitre <TXXXX[.XXX]> — Opens MITRE ATT&CK technique page.",
+      cve: "cve <CVE-YYYY-NNNN> — Opens NVD detail page.",
+      b64e: "b64e <text> — Base64‑encode string.",
+      b64d: "b64d <text> — Base64‑decode string.",
+      hash: "hash <text> — SHA‑256 digest in hex.",
+      motd: "motd — Prints a random security tip.",
+      fortune: "fortune — Prints a random blue‑team fortune.",
+      learn:
+        "learn <topic> — Quick definitions: ioc, tactic, c2, sigma, yara.",
+      hunt: "hunt — Prints a clue; correlate to reveal an egg.",
+      konami: "konami — You're curious. Good.",
+    };
+    print(details[arg] || "No detailed help for that command.");
+  };
+
+  const run = async () => {
+    const raw = value.trim();
+    if (!raw) return;
+    setHistory((h) => [...h, `> ${raw}`]);
+
+    const [head, ...rest] = raw.split(/\s+/);
+    const cmd = head.toLowerCase();
+    const argLine = rest.join(" ");
+
+    switch (cmd) {
+      case "help":
+        cmdHelp(rest[0]?.toLowerCase());
+        break;
+      case "motd":
+        rollTip();
+        break;
+      case "fortune":
+        print(fortunes[Math.floor(Math.random() * fortunes.length)]);
+        break;
+      case "clear":
+        setHistory([
+          "Type 'help' to see available commands. Try: motd, vt <ioc>, otx <ioc>, shodan <query>.",
+        ]);
+        break;
+      case "/tip": {
+        const tip = getTipText(raw);
+        if (tip) print(`TIP: ${tip}`);
+        else print("[err] usage: /tip <text>");
+        break;
+      }
+      case "whoami":
+        print("defender@mylr.sh — curious, disciplined, collaborative.");
+        break;
+      case "date":
+        print(new Date().toString());
+        break;
+      case "b64e":
+        if (!argLine) print("[err] usage: b64e <text>");
+        else
+          try {
+            print(btoa(argLine));
+          } catch {
+            print("[err] non‑latin1 input; use UTF‑8 workaround");
+          }
+        break;
+      case "b64d":
+        if (!argLine) print("[err] usage: b64d <text>");
+        else
+          try {
+            print(atob(argLine));
+          } catch {
+            print("[err] invalid base64");
+          }
+        break;
+      case "hash":
+        if (!argLine) print("[err] usage: hash <text>");
+        else
+          try {
+            print(await sha256Hex(argLine));
+          } catch {
+            print("[err] hashing failed");
+          }
+        break;
+      case "vt":
+        if (!argLine) print("[err] usage: vt <ioc>");
+        else {
+          openExternal(
+            `https://www.virustotal.com/gui/search/${encodeURIComponent(
+              argLine
+            )}`
+          );
+          print("[ok] opened VirusTotal");
+        }
+        break;
+      case "otx":
+        if (!argLine) print("[err] usage: otx <ioc>");
+        else {
+          openExternal(
+            `https://otx.alienvault.com/browse/global/pulses?q=${encodeURIComponent(
+              argLine
+            )}`
+          );
+          print("[ok] opened OTX");
+        }
+        break;
+      case "urlscan":
+        if (!argLine) print("[err] usage: urlscan <query>");
+        else {
+          openExternal(
+            `https://urlscan.io/search/#${encodeURIComponent(argLine)}`
+          );
+          print("[ok] opened urlscan.io");
+        }
+        break;
+      case "shodan":
+        if (!argLine) print("[err] usage: shodan <query>");
+        else {
+          openExternal(buildShodanUrl(argLine));
+          print("[ok] opened Shodan");
+        }
+        break;
+      case "mitre": {
+        if (!argLine) {
+          print("[err] usage: mitre <TXXXX[.XXX]>");
+          break;
+        }
+        const [base, sub] = argLine.toUpperCase().split(".");
+        if (!/^T\d{4}$/.test(base)) {
+          print("[err] technique id like T1055 or T1055.012");
+          break;
+        }
+        const url = sub
+          ? `https://attack.mitre.org/techniques/${base}/${sub.padStart(
+              3,
+              "0"
+            )}/`
+          : `https://attack.mitre.org/techniques/${base}/`;
+        openExternal(url);
+        print("[ok] opened ATT&CK");
+        break;
+      }
+      case "cve":
+        if (!/^CVE-\d{4}-\d{4,7}$/i.test(argLine))
+          print("[err] usage: cve CVE-YYYY-NNNN");
+        else {
+          openExternal(
+            `https://nvd.nist.gov/vuln/detail/${argLine.toUpperCase()}`
+          );
+          print("[ok] opened NVD");
+        }
+        break;
+      case "learn":
+        if (!argLine) print("[err] usage: learn <topic>");
+        else
+          print(
+            glossary[argLine.toLowerCase()] ||
+              "No entry. Topics: ioc, tactic, c2, sigma, yara."
+          );
+        break;
+      case "hunt":
+        print(
+          "Hunt Clue #1: Filter for short‑lived subdomains in feeds. Look for TLS issuers that repeat."
+        );
+        print(
+          "Hunt Clue #2: Correlate registrar + ASN pivots. Egg format: egg{word-word-word}."
+        );
+        break;
+      case "konami":
+        print("↑ ↑ ↓ ↓ ← → ← → B A — nice memory. egg{observe-filter-correlate}");
+        break;
+      default:
+        print("[err] unknown command");
+    }
+
+    setValue("");
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="font-mono text-xs text-zinc-300 bg-black/40 border border-zinc-800 rounded p-3 flex-1 overflow-y-auto min-h-0">
+        {history.map((line, i) => (
+          <div key={i}>{line}</div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={value}
+          onChange={(e) => setValue((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => {
+            if ((e as React.KeyboardEvent<HTMLInputElement>).key === "Enter")
+              run();
+          }}
+          placeholder="mylr.sh$"
+          className="flex-1 bg-[#0a0e1a] border border-zinc-700 rounded px-3 py-2 text-sm font-mono"
+        />
+        <button
+          onClick={() => run()}
+          className="px-3 py-2 text-sm border border-zinc-700 rounded"
+        >
+          Run
+        </button>
+        <button
+          onClick={() => rollTip()}
+          className="px-3 py-2 text-sm border border-[#cc5500] bg-[#cc5500] text-[#0a0e1a] rounded"
+        >
+          Random
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ShodanSearch() {
+  const [q, setQ] = useState("");
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!q.trim()) return;
+    const url = buildShodanUrl(q.trim());
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <form onSubmit={submit} className="mt-3 flex gap-2">
+      <input
+        value={q}
+        onChange={(e) => setQ((e.target as HTMLInputElement).value)}
+        placeholder="org:example.com port:443 country:US"
+        className="flex-1 bg-[#0a0e1a] border border-zinc-700 rounded px-3 py-2 text-sm font-mono"
+      />
+      <button type="submit" className="px-3 py-2 text-sm border border-zinc-700 rounded">
+        Search
+      </button>
+    </form>
+  );
+}
