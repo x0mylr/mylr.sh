@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>mylr.sh — under construction</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    :root{
+      --bg:#0a0e1a; --card:#141b2d; --accent:#cc5500; --text:#e8eaed; --dim:#9aa0a6; --border:#2a3142;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1000px 600px at 10% -10%, #141b2d 0%, #0a0e1a 50%) fixed;
+      color:var(--text); font:14px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, "IBM Plex Mono", monospace;
+      display:grid; place-items:center; padding:24px;
+    }
+    .card{
+      width:min(720px, 100%); background:var(--card); border:1px solid var(--border); border-radius:16px;
+      padding:28px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .brand{display:flex; align-items:center; gap:10px; color:var(--accent); font-weight:700; letter-spacing:.6px}
+    .dot{width:8px; height:8px; background:var(--accent); border-radius:50%; box-shadow:0 0 12px rgba(204,85,0,.8)}
+    h1{margin:10px 0 6px; font-size:22px}
+    p{margin:8px 0; color:var(--dim)}
+    .badge{display:inline-block; padding:.2rem .5rem; border:1px solid var(--accent); color:var(--accent); border-radius:999px; font-size:.72rem; letter-spacing:.4px}
+    .cta{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+    .btn{
+      display:inline-flex; align-items:center; gap:8px; padding:.65rem .9rem; border-radius:10px; border:1px solid var(--border);
+      background:transparent; color:var(--text); text-decoration:none; transition:.2s ease;
+    }
+    .btn:hover{border-color:var(--accent); color:var(--accent)}
+    .footer{margin-top:16px; padding-top:12px; border-top:1px dashed var(--border); display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; color:var(--dim); font-size:.85rem}
+    .motd{margin:10px 0 0; color:var(--accent); font-size:.9rem}
+    code{background:#0b1020; border:1px solid #1d2740; padding:.25rem .4rem; border-radius:6px; color:#d6d9df}
+    .links{display:flex; gap:12px; align-items:center}
+    .links a{color:var(--dim); text-decoration:none}
+    .links a:hover{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <main class="card" role="main" aria-label="Site under construction">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><span>mylr.sh</span></div>
+    <h1>Building the next iteration</h1>
+    <p>Focused on real-world security research, interactive tools, ATT&CK-mapped tradecraft, and threat feeds from public sources.</p>
+    <p class="motd">MOTD: <em>truth is the highest form of defense.</em></p>
+
+    <p style="margin-top:12px">
+      <span class="badge">// status</span>
+      <span style="margin-left:8px">Site is under active development. Core features are being assembled.</span>
+    </p>
+
+    <div class="cta" aria-label="Quick links">
+      <a class="btn" href="mailto:josh@mylr.sh" title="Email">Email josh@mylr.sh</a>
+      <a class="btn" href="#" title="RSS feed">RSS</a>
+      <a class="btn" href="#" title="GitHub">GitHub</a>
+      <a class="btn" href="#" title="Updates on X/Twitter">X</a>
+      <a class="btn" href="#" title="LinkedIn">LinkedIn</a>
+    </div>
+
+    <p style="margin-top:14px">If you’re looking for indicators or detections in the meantime, send a note with context and I’ll share what’s publishable.</p>
+
+    <div class="footer">
+      <div>© 2025  Joshua Miller [x0mylr]. All rights reserved</div>
+      <div class="links">
+        <a href="#" title="PGP">PGP</a>
+        <span>•</span>
+        <a href="#" title="Status">Status</a>
+        <span>•</span>
+        <span>version: pre-alpha</span>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
