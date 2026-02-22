@@ -1080,7 +1080,7 @@ class FeedAggregator:
             defcon = data['metadata']['defcon_details']
             f.write(f"THREAT LEVEL: DEFCON {data['metadata']['defcon_level']} - {defcon['name']}\n")
             f.write(f"Description: {defcon['description']}\n")
-            f.write(f"Score: {defcon['score']}/5.0\n\n")
+            f.write(f"Source: {defcon.get('source', 'Internal')}\n\n")
 
             geo = data['metadata']['geo_stats']
             f.write(f"Geographic Coverage: {geo['total_geolocated']} articles geolocated\n")
