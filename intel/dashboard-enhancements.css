@@ -5,10 +5,11 @@
 ============================================ */
 
 /* DEFCON Level Color Classes */
+/* DEFCON: 1=Maximum(red) 2=High(orange) 3=Elevated(yellow) 4=Above Normal(blue) 5=Normal(green) */
 .metric-value.defcon-1 { color: #ff0000; }
-.metric-value.defcon-2 { color: #ff4444; }
-.metric-value.defcon-3 { color: #ff9944; }
-.metric-value.defcon-4 { color: #44aaff; }
+.metric-value.defcon-2 { color: #ff9944; }
+.metric-value.defcon-3 { color: #ffcc00; }
+.metric-value.defcon-4 { color: #4488ff; }
 .metric-value.defcon-5 { color: #44ff88; }
 
 /* Trending ATT&CK Items - Clickable */

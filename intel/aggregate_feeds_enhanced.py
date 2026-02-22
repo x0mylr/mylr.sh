@@ -415,15 +415,55 @@ class GeocodingService:
         return None
 
 
+def scrape_defcon_level():
+    """Scrape current DEFCON estimate from defconlevel.com (OSINT)"""
+    DEFCON_MAP = {
+        5: {'name': 'NORMAL', 'color': '#44ff88', 'description': 'Normal peacetime readiness'},
+        4: {'name': 'ABOVE NORMAL', 'color': '#4488ff', 'description': 'Increased intelligence watch and security'},
+        3: {'name': 'ELEVATED', 'color': '#ffcc00', 'description': 'Increase in force readiness above normal'},
+        2: {'name': 'HIGH', 'color': '#ff9944', 'description': 'Armed forces ready to deploy in 6 hours'},
+        1: {'name': 'MAXIMUM', 'color': '#ff0000', 'description': 'Maximum readiness, nuclear war imminent'}
+    }
+    try:
+        resp = requests.get(
+            'https://www.defconlevel.com/current-level.php',
+            headers={'User-Agent': 'The Daily Brief/1.0 (OSINT Aggregator)'},
+            timeout=15
+        )
+        resp.raise_for_status()
+        html = resp.text
+
+        # Try image src pattern: /images/defcon-3.png
+        match = re.search(r'/images/defcon-(\d)\.png', html)
+        if not match:
+            # Fallback: text pattern "DEFCON 3"
+            match = re.search(r'DEFCON\s+(\d)', html, re.IGNORECASE)
+        if not match:
+            return None
+
+        level = int(match.group(1))
+        if level < 1 or level > 5:
+            return None
+
+        details = DEFCON_MAP[level].copy()
+        details['source'] = 'defconlevel.com (OSINT Estimate)'
+        details['scraped_at'] = datetime.now().isoformat()
+
+        return {'level': level, 'details': details}
+    except Exception as e:
+        print(f"  [WARN] Could not scrape DEFCON level: {e}")
+        return None
+
+
 class DEFCONCalculator:
-    """Calculate threat level based on intelligence feed data"""
+    """Fallback: Calculate threat level based on intelligence feed data"""
 
     DEFCON_LEVELS = {
-        5: {'name': 'CRITICAL', 'color': '#ff0000', 'description': 'Widespread active attacks, immediate action required'},
-        4: {'name': 'SEVERE', 'color': '#ff4444', 'description': 'Multiple high-impact threats detected'},
-        3: {'name': 'ELEVATED', 'color': '#ff9944', 'description': 'Notable threats present, heightened awareness needed'},
-        2: {'name': 'GUARDED', 'color': '#ffcc00', 'description': 'Routine threat activity at normal levels'},
-        1: {'name': 'LOW', 'color': '#44ff88', 'description': 'Minimal threat activity detected'}
+        1: {'name': 'MAXIMUM', 'color': '#ff0000', 'description': 'Maximum readiness, nuclear war imminent'},
+        2: {'name': 'HIGH', 'color': '#ff9944', 'description': 'Armed forces ready to deploy in 6 hours'},
+        3: {'name': 'ELEVATED', 'color': '#ffcc00', 'description': 'Increase in force readiness above normal'},
+        4: {'name': 'ABOVE NORMAL', 'color': '#4488ff', 'description': 'Increased intelligence watch and security'},
+        5: {'name': 'NORMAL', 'color': '#44ff88', 'description': 'Normal peacetime readiness'}
     }
 
     def __init__(self, config: Dict):
@@ -474,12 +514,12 @@ class DEFCONCalculator:
         elif len(malware_articles) >= 10: score += 0.5
         elif len(malware_articles) >= 5: score += 0.25
 
-        # Convert score to DEFCON level
-        if score >= self.thresholds['critical']: level = 5
-        elif score >= self.thresholds['severe']: level = 4
+        # Convert score to DEFCON level (lower number = more severe)
+        if score >= self.thresholds['critical']: level = 1
+        elif score >= self.thresholds['severe']: level = 2
         elif score >= self.thresholds['elevated']: level = 3
-        elif score >= self.thresholds['guarded']: level = 2
-        else: level = 1
+        elif score >= self.thresholds['guarded']: level = 4
+        else: level = 5
 
         details = self.DEFCON_LEVELS[level].copy()
         details['score'] = round(score, 2)
@@ -947,10 +987,17 @@ class FeedAggregator:
 
         all_articles.sort(key=lambda x: (x['priority'], x['published']), reverse=False)
 
-        defcon_level, defcon_details = self.defcon_calc.calculate(all_articles)
-        print(f"\n  DEFCON {defcon_level} - {defcon_details['name']}")
+        # Try scraping DEFCON from defconlevel.com first, fall back to internal calc
+        scraped = scrape_defcon_level()
+        if scraped:
+            defcon_level = scraped['level']
+            defcon_details = scraped['details']
+            print(f"\n  DEFCON {defcon_level} - {defcon_details['name']} (source: defconlevel.com)")
+        else:
+            defcon_level, defcon_details = self.defcon_calc.calculate(all_articles)
+            defcon_details['source'] = 'Internal Calculation'
+            print(f"\n  DEFCON {defcon_level} - {defcon_details['name']} (internal)")
         print(f"  {defcon_details['description']}")
-        print(f"  Score: {defcon_details['score']}/5.0")
 
         geo_stats = self.calculate_geo_stats(all_articles)
 

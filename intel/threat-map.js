@@ -372,11 +372,12 @@ class ThreatMap {
         const footer = document.createElement('div');
         footer.className = 'popup-footer';
 
-        const viewIntelLink = document.createElement('a');
-        viewIntelLink.className = 'popup-link';
-        viewIntelLink.href = `/?article=${encodeURIComponent(article.id || '')}`;
-        viewIntelLink.textContent = 'View Intel Report →';
-        footer.appendChild(viewIntelLink);
+        const viewIntelBtn = document.createElement('button');
+        viewIntelBtn.type = 'button';
+        viewIntelBtn.className = 'popup-link';
+        viewIntelBtn.textContent = 'View Intel Report →';
+        viewIntelBtn.addEventListener('click', () => this.showArticleDetail(article));
+        footer.appendChild(viewIntelBtn);
 
         if (safeLink !== '#') {
             const extLink = document.createElement('a');
@@ -420,16 +421,16 @@ class ThreatMap {
 
         if (typeof L.heatLayer === 'function') {
             this.heatmapLayer = L.heatLayer(heatData, {
-                radius: 25,
-                blur: 15,
+                radius: 30,
+                blur: 20,
                 maxZoom: 10,
-                max: 3,
+                max: 2,
                 gradient: {
-                    0.0: '#0000ff',
-                    0.3: '#00ffff',
-                    0.5: '#00ff00',
-                    0.7: '#ffff00',
-                    0.9: '#ff9944',
+                    0.0: '#1a472a',
+                    0.2: '#2ecc40',
+                    0.4: '#ffdc00',
+                    0.6: '#ff851b',
+                    0.8: '#ff4136',
                     1.0: '#ff0000'
                 }
             }).addTo(this.map);
@@ -684,6 +685,282 @@ class ThreatMap {
         document.querySelectorAll('.view-control .view-btn').forEach(btn => btn.classList.remove('active'));
         const btn = document.getElementById(buttonId);
         if (btn) btn.classList.add('active');
+    }
+
+    // ============================================
+    // Intelligence Report Modal
+    // ============================================
+
+    showArticleDetail(article) {
+        this.closeArticleDetail();
+
+        const safeLink = this.sanitizeUrl(article.link);
+
+        // Overlay (backdrop)
+        const overlay = document.createElement('div');
+        overlay.className = 'detail-overlay';
+        overlay.id = 'article-detail-overlay';
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.closeArticleDetail();
+        });
+
+        const panel = document.createElement('div');
+        panel.className = 'detail-panel';
+
+        // Header bar
+        const headerBar = document.createElement('div');
+        headerBar.className = 'detail-header-bar';
+
+        const headerLabel = document.createElement('span');
+        headerLabel.className = 'detail-header-label';
+        headerLabel.textContent = 'INTELLIGENCE REPORT';
+        headerBar.appendChild(headerLabel);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'detail-close-btn';
+        closeBtn.textContent = 'CLOSE [ESC]';
+        closeBtn.setAttribute('aria-label', 'Close detail view');
+        closeBtn.addEventListener('click', () => this.closeArticleDetail());
+        headerBar.appendChild(closeBtn);
+
+        panel.appendChild(headerBar);
+
+        // Scrollable content area
+        const content = document.createElement('div');
+        content.className = 'detail-content';
+
+        // Title
+        const cleanTitle = this.cleanArticleTitle(article.title, article.source);
+        const titleEl = document.createElement('h2');
+        titleEl.className = 'detail-title';
+        titleEl.textContent = cleanTitle;
+        content.appendChild(titleEl);
+
+        // Tags row
+        const tagsRow = document.createElement('div');
+        tagsRow.className = 'detail-tags';
+
+        const catTag = document.createElement('span');
+        catTag.className = `tag tag-${this.getCategoryClass(article.category)}`;
+        catTag.textContent = article.category || 'UNKNOWN';
+        tagsRow.appendChild(catTag);
+
+        const priLevel = Math.max(1, Math.min(5, parseInt(article.priority) || 3));
+        const priTag = document.createElement('span');
+        priTag.className = `tag tag-priority priority-${priLevel}`;
+        priTag.textContent = priLevel === 1 ? 'CRITICAL' : priLevel === 2 ? 'HIGH' : 'MEDIUM';
+        tagsRow.appendChild(priTag);
+
+        const srcTag = document.createElement('span');
+        srcTag.className = 'tag tag-source';
+        srcTag.textContent = article.source || 'Unknown';
+        tagsRow.appendChild(srcTag);
+
+        if (article.scope) {
+            const scopeTag = document.createElement('span');
+            scopeTag.className = 'tag tag-source';
+            scopeTag.textContent = article.scope.toUpperCase();
+            tagsRow.appendChild(scopeTag);
+        }
+        content.appendChild(tagsRow);
+
+        // Metadata grid
+        const metaGrid = document.createElement('div');
+        metaGrid.className = 'detail-meta-grid';
+
+        const addMeta = (label, value) => {
+            const item = document.createElement('div');
+            item.className = 'detail-meta-item';
+            const labelEl = document.createElement('span');
+            labelEl.className = 'detail-meta-label';
+            labelEl.textContent = label;
+            const valueEl = document.createElement('span');
+            valueEl.className = 'detail-meta-value';
+            valueEl.textContent = value;
+            item.appendChild(labelEl);
+            item.appendChild(valueEl);
+            metaGrid.appendChild(item);
+        };
+
+        addMeta('Published:', this.formatDate(article.published));
+        addMeta('Source:', article.source || 'Unknown');
+        addMeta('Feed:', article.feed_name || 'N/A');
+        if (article.geo && article.geo.country) {
+            addMeta('Location:', article.geo.country);
+        }
+        if (article.sector) {
+            addMeta('Sector:', article.sector);
+        }
+        addMeta('Audience:', article.audience ? article.audience.charAt(0).toUpperCase() + article.audience.slice(1) : 'N/A');
+        content.appendChild(metaGrid);
+
+        // Summary section
+        const summarySection = document.createElement('div');
+        summarySection.className = 'detail-section';
+        const summaryTitle = document.createElement('h3');
+        summaryTitle.className = 'detail-section-title';
+        summaryTitle.textContent = 'SUMMARY';
+        summarySection.appendChild(summaryTitle);
+        const summaryText = document.createElement('p');
+        summaryText.className = 'detail-summary-text';
+        summaryText.textContent = article.summary || 'No summary available.';
+        summarySection.appendChild(summaryText);
+        content.appendChild(summarySection);
+
+        // ATT&CK Techniques
+        if (article.attack_techniques && article.attack_techniques.length > 0) {
+            const ttpNames = {
+                'T1566': 'Spearphishing Attachment', 'T1059': 'Command & Scripting Interpreter',
+                'T1078': 'Valid Accounts', 'T1190': 'Exploit Public-Facing Application',
+                'T1071': 'Application Layer Protocol', 'T1486': 'Data Encrypted for Impact',
+                'T1048': 'Exfiltration Over Alternative Protocol', 'T1021': 'Remote Services',
+                'T1053': 'Scheduled Task/Job', 'T1027': 'Obfuscated Files or Information',
+                'T1105': 'Ingress Tool Transfer'
+            };
+
+            const attackSection = document.createElement('div');
+            attackSection.className = 'detail-section';
+            const attackTitle = document.createElement('h3');
+            attackTitle.className = 'detail-section-title';
+            attackTitle.textContent = 'MITRE ATT&CK TECHNIQUES';
+            attackSection.appendChild(attackTitle);
+
+            const techList = document.createElement('div');
+            techList.className = 'detail-technique-list';
+
+            article.attack_techniques.forEach(tech => {
+                if (!/^T\d{4}(?:\.\d{3})?$/.test(tech)) return;
+
+                const techItem = document.createElement('div');
+                techItem.className = 'detail-technique-item';
+
+                const techId = document.createElement('span');
+                techId.className = 'detail-technique-id';
+                techId.textContent = tech;
+                techItem.appendChild(techId);
+
+                const techName = document.createElement('span');
+                techName.className = 'detail-technique-name';
+                techName.textContent = ttpNames[tech] || 'Unknown Technique';
+                techItem.appendChild(techName);
+
+                const techLink = document.createElement('a');
+                techLink.className = 'detail-technique-link';
+                techLink.href = `https://attack.mitre.org/techniques/${encodeURIComponent(tech)}/`;
+                techLink.target = '_blank';
+                techLink.rel = 'noopener noreferrer';
+                techLink.textContent = 'View on MITRE →';
+                techItem.appendChild(techLink);
+
+                techList.appendChild(techItem);
+            });
+
+            attackSection.appendChild(techList);
+            content.appendChild(attackSection);
+        }
+
+        // IOCs section
+        if (article.iocs) {
+            const iocTypes = [
+                { key: 'cves', label: 'CVE' },
+                { key: 'ips', label: 'IP' },
+                { key: 'domains', label: 'Domain' },
+                { key: 'hashes', label: 'Hash' }
+            ];
+
+            const hasIocs = iocTypes.some(t => article.iocs[t.key] && article.iocs[t.key].length > 0);
+            if (hasIocs) {
+                const iocSection = document.createElement('div');
+                iocSection.className = 'detail-section';
+                const iocTitle = document.createElement('h3');
+                iocTitle.className = 'detail-section-title';
+                iocTitle.textContent = 'INDICATORS OF COMPROMISE';
+                iocSection.appendChild(iocTitle);
+
+                const iocGrid = document.createElement('div');
+                iocGrid.className = 'detail-ioc-grid';
+
+                iocTypes.forEach(({ key, label }) => {
+                    if (article.iocs[key]) {
+                        article.iocs[key].forEach(val => {
+                            const iocItem = document.createElement('div');
+                            iocItem.className = 'detail-ioc-item';
+                            const iocType = document.createElement('span');
+                            iocType.className = 'detail-ioc-type';
+                            iocType.textContent = label;
+                            const iocValue = document.createElement('span');
+                            iocValue.className = 'detail-ioc-value';
+                            iocValue.textContent = val;
+                            iocItem.appendChild(iocType);
+                            iocItem.appendChild(iocValue);
+                            iocGrid.appendChild(iocItem);
+                        });
+                    }
+                });
+
+                iocSection.appendChild(iocGrid);
+                content.appendChild(iocSection);
+            }
+        }
+
+        // External link footer
+        if (safeLink !== '#') {
+            const extSection = document.createElement('div');
+            extSection.className = 'detail-section detail-ext-section';
+            const extLink = document.createElement('a');
+            extLink.className = 'detail-ext-link';
+            extLink.href = safeLink;
+            extLink.target = '_blank';
+            extLink.rel = 'noopener noreferrer';
+            extLink.textContent = 'View Original Source →';
+            extSection.appendChild(extLink);
+            content.appendChild(extSection);
+        }
+
+        panel.appendChild(content);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+
+        closeBtn.focus();
+
+        // ESC to close
+        this._detailEscHandler = (e) => {
+            if (e.key === 'Escape') this.closeArticleDetail();
+        };
+        document.addEventListener('keydown', this._detailEscHandler);
+    }
+
+    closeArticleDetail() {
+        const overlay = document.getElementById('article-detail-overlay');
+        if (overlay) overlay.remove();
+        if (this._detailEscHandler) {
+            document.removeEventListener('keydown', this._detailEscHandler);
+            this._detailEscHandler = null;
+        }
+    }
+
+    getCategoryClass(category) {
+        const classes = {
+            'APT': 'incidents', 'VULNERABILITY': 'advisories', 'MALWARE': 'incidents',
+            'BREACH': 'incidents', 'RESEARCH': 'research', 'ADVISORY': 'advisories',
+            'PHISHING': 'incidents', 'SUPPLY_CHAIN': 'incidents', 'NETWORK': 'advisories'
+        };
+        return classes[category] || 'incidents';
+    }
+
+    cleanArticleTitle(title, source) {
+        let cleanTitle = title || 'Untitled';
+        if (source) {
+            const suffixes = [` - ${source}`, ` – ${source}`, ` | ${source}`, ` (${source})`];
+            for (const suffix of suffixes) {
+                if (cleanTitle.endsWith(suffix)) {
+                    cleanTitle = cleanTitle.slice(0, -suffix.length);
+                    break;
+                }
+            }
+        }
+        return cleanTitle;
     }
 
     sanitizeUrl(href) {

@@ -336,7 +336,8 @@ class FeedDashboard {
             el.textContent = `DEFCON ${Sanitize.integer(level, 1, 5)}`;
             // Use CSS class instead of inline style for DEFCON color
             el.className = 'metric-value defcon-' + Sanitize.integer(level, 1, 5);
-            el.title = `${details.name || ''}: ${details.description || ''}\nScore: ${details.score || 0}/5.0`;
+            const source = details.source || 'Internal';
+            el.title = `${details.name || ''}: ${details.description || ''}\nSource: ${source}`;
         }
     }
 
