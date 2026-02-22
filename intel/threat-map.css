@@ -265,6 +265,10 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
 }
 
+.threat-popup .leaflet-popup-content {
+    font-size: 15px !important;
+}
+
 .threat-popup .leaflet-popup-tip {
     background: #1a1a1a;
     border: 1px solid #9a4c30;
@@ -272,7 +276,7 @@
 
 .threat-popup-content {
     font-family: 'Courier New', monospace;
-    font-size: 1em;
+    font-size: 1em !important;
 }
 
 .popup-header {
@@ -284,7 +288,7 @@
 
 .popup-title {
     font-weight: bold;
-    font-size: 1.05em;
+    font-size: 1.15em !important;
     margin-bottom: 8px;
     line-height: 1.4;
 }
@@ -292,7 +296,7 @@
 .popup-meta {
     display: flex;
     gap: 10px;
-    font-size: 0.9em;
+    font-size: 0.92em !important;
 }
 
 .popup-category {
@@ -339,7 +343,7 @@
 .popup-summary {
     color: #b0b0b0;
     line-height: 1.6;
-    font-size: 1em;
+    font-size: 1em !important;
 }
 
 .popup-footer {
@@ -406,7 +410,7 @@
     border: 1px solid #9a4c30 !important;
     color: #e0e0e0 !important;
     font-family: 'Courier New', monospace !important;
-    font-size: 0.95em !important;
+    font-size: 14px !important;
     padding: 8px 12px !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
 }

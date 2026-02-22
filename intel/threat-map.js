@@ -374,7 +374,7 @@ class ThreatMap {
 
         const viewIntelLink = document.createElement('a');
         viewIntelLink.className = 'popup-link';
-        viewIntelLink.href = `the-daily-brief.html?article=${encodeURIComponent(article.id || '')}`;
+        viewIntelLink.href = `/?article=${encodeURIComponent(article.id || '')}`;
         viewIntelLink.textContent = 'View Intel Report →';
         footer.appendChild(viewIntelLink);
 
@@ -671,7 +671,7 @@ class ThreatMap {
         btnGroup.appendChild(resetBtn);
 
         const dashBtn = document.createElement('a');
-        dashBtn.href = 'the-daily-brief.html';
+        dashBtn.href = '/';
         dashBtn.className = 'banner-btn banner-btn-primary';
         dashBtn.textContent = 'Return to Dashboard';
         btnGroup.appendChild(dashBtn);
