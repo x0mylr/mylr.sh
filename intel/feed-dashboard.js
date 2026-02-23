@@ -132,6 +132,8 @@ function announce(message) {
 class FeedDashboard {
     constructor() {
         this.feedData = null;
+        this._liveFeedData = null;  // Cache for switching back from archive
+        this._viewingArchive = false;
         this.selectedArticles = new Set();
         this.currentView = 'list';
         this._searchDebounceTimer = null;
@@ -154,6 +156,7 @@ class FeedDashboard {
 
     async init() {
         await this.loadFeedData();
+        this._liveFeedData = this.feedData;  // Cache live data
 
         // Cache metric elements by data-metric attribute
         DOM.qsa('[data-metric]').forEach(el => {
@@ -171,6 +174,7 @@ class FeedDashboard {
         this.renderFeed();
         this.attachEventListeners();
         this.handleUrlArticleParam();
+        this.loadArchiveIndex();
 
         announce('Dashboard loaded. Displaying threat intelligence feed.');
     }
@@ -310,6 +314,94 @@ class FeedDashboard {
                 }
             ]
         };
+    }
+
+    /* ============================================
+       ARCHIVE SYSTEM
+    ============================================ */
+    async loadArchiveIndex() {
+        const select = DOM.qs('#archive-select');
+        if (!select) return;
+
+        try {
+            const resp = await fetch('output/archive/index.json');
+            if (!resp.ok) return;
+            const index = await resp.json();
+
+            if (!index.months || index.months.length === 0) return;
+
+            // Clear existing options beyond the default
+            select.innerHTML = '';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- Select Month --';
+            select.appendChild(defaultOpt);
+
+            index.months.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.file;
+                opt.textContent = `${m.label} (${m.article_count})`;
+                select.appendChild(opt);
+            });
+
+            // Attach event listener
+            select.addEventListener('change', (e) => this.handleArchiveSelect(e));
+        } catch {
+            // No archive yet — that's fine
+        }
+    }
+
+    async handleArchiveSelect(e) {
+        const file = e.target.value;
+
+        if (!file) {
+            // Switch back to live data
+            if (this._liveFeedData) {
+                this.feedData = this._liveFeedData;
+                this._viewingArchive = false;
+                this.refreshDashboard();
+                // Re-select the current time range radio
+                const activeRadio = DOM.qs('#time-24h');
+                if (activeRadio) activeRadio.checked = true;
+                this.filters.timeRange = '24h';
+                announce('Returned to live intelligence feed.');
+            }
+            return;
+        }
+
+        try {
+            const resp = await fetch(`output/archive/${file}`);
+            if (!resp.ok) {
+                announce('Failed to load archive.');
+                return;
+            }
+            const data = await resp.json();
+            if (!data || !Array.isArray(data.articles) || !data.metadata) {
+                announce('Invalid archive data.');
+                return;
+            }
+
+            this.feedData = data;
+            this._viewingArchive = true;
+            this.filters.timeRange = 'archive';
+            // Uncheck all time range radios
+            DOM.qsa('[name="timerange"]').forEach(r => { r.checked = false; });
+            this.refreshDashboard();
+            announce(`Viewing archive: ${data.metadata.month || file}`);
+        } catch {
+            announce('Error loading archive.');
+        }
+    }
+
+    refreshDashboard() {
+        this.updateMetrics();
+        this.updateDEFCON();
+        this.updateFilterCounts();
+        this.updateTrending();
+        this.updateSectorStats();
+        this.updateGeoStats();
+        this.updateTTPsList();
+        this.renderFeed();
     }
 
     /* ============================================
@@ -940,6 +1032,7 @@ class FeedDashboard {
             case '24h': return hours <= 24;
             case '7d': return hours <= 168;
             case '30d': return hours <= 720;
+            case 'archive': return true;  // Show all articles in archive
             case 'custom': {
                 const from = this.filters.customFrom;
                 const to = this.filters.customTo;
@@ -1162,13 +1255,22 @@ class FeedDashboard {
 
         // Time range filters
         const customRangeInputs = DOM.qs('#custom-range-inputs');
+        const archiveSelect = DOM.qs('#archive-select');
         DOM.qsa('[name="timerange"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.filters.timeRange = e.target.id.replace('time-', '');
                 if (customRangeInputs) {
                     customRangeInputs.style.display = this.filters.timeRange === 'custom' ? 'block' : 'none';
                 }
-                this.renderFeed();
+                // If switching back from archive, restore live data
+                if (this._viewingArchive && this._liveFeedData) {
+                    this.feedData = this._liveFeedData;
+                    this._viewingArchive = false;
+                    if (archiveSelect) archiveSelect.value = '';
+                    this.refreshDashboard();
+                } else {
+                    this.renderFeed();
+                }
             });
         });
 

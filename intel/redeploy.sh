@@ -118,6 +118,14 @@ if [ "$UPDATED_BACKEND" = true ]; then
         sudo chown nginx:nginx "$WEB_ROOT/output/feed_data.json"
         ok "Feed data published to web root"
     fi
+
+    # Sync archive directory
+    if [ -d "$INSTALL_DIR/output/archive" ]; then
+        sudo mkdir -p "$WEB_ROOT/output/archive"
+        sudo cp "$INSTALL_DIR/output/archive/"*.json "$WEB_ROOT/output/archive/" 2>/dev/null
+        sudo chown -R nginx:nginx "$WEB_ROOT/output/archive"
+        ok "Archive data published to web root"
+    fi
 else
     info "No backend changes — skipping aggregator"
 fi

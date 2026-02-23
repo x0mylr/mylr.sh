@@ -1065,8 +1065,97 @@ class FeedAggregator:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
         print(f"\n  Saved {data['metadata']['total_articles']} articles to {output_file}")
+        self.save_archive(data)
         self.save_summary(data)
         return output_file
+
+    def save_archive(self, data: Dict):
+        """Append current articles to the monthly archive file and update index."""
+        archive_dir = self.output_dir / 'archive'
+        archive_dir.mkdir(exist_ok=True)
+
+        month_key = datetime.now().strftime('%Y-%m')
+        archive_file = archive_dir / f'{month_key}.json'
+
+        # Load existing archive for this month (if any)
+        existing_articles = []
+        existing_ids = set()
+        if archive_file.exists():
+            try:
+                with open(archive_file, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                existing_articles = existing_data.get('articles', [])
+                existing_ids = {a['id'] for a in existing_articles}
+            except (json.JSONDecodeError, KeyError):
+                existing_articles = []
+                existing_ids = set()
+
+        # Merge new articles (deduplicate by ID)
+        new_count = 0
+        for article in data['articles']:
+            if article['id'] not in existing_ids:
+                existing_articles.append(article)
+                existing_ids.add(article['id'])
+                new_count += 1
+
+        # Recalculate metadata for the full archive month
+        geo_stats = self.calculate_geo_stats(existing_articles)
+
+        # Get DEFCON for archive (use current scraped/calculated value)
+        archive_data = {
+            'metadata': {
+                'generated_at': datetime.now().isoformat(),
+                'month': month_key,
+                'total_articles': len(existing_articles),
+                'feeds_processed': data['metadata']['feeds_processed'],
+                'feed_stats': data['metadata']['feed_stats'],
+                'defcon_level': data['metadata']['defcon_level'],
+                'defcon_details': data['metadata']['defcon_details'],
+                'geo_stats': geo_stats
+            },
+            'articles': existing_articles
+        }
+
+        with open(archive_file, 'w', encoding='utf-8') as f:
+            json.dump(archive_data, f, indent=2, default=str)
+
+        if new_count > 0:
+            print(f"  Archive {month_key}: +{new_count} new articles ({len(existing_articles)} total)")
+
+        # Update archive index
+        self.update_archive_index(archive_dir)
+
+    def update_archive_index(self, archive_dir: Path):
+        """Generate index.json listing all available archive months."""
+        months = []
+        for f in sorted(archive_dir.glob('*.json'), reverse=True):
+            if f.name == 'index.json':
+                continue
+            month_key = f.stem  # e.g. "2026-02"
+            try:
+                with open(f, 'r', encoding='utf-8') as fh:
+                    data = json.load(fh)
+                article_count = data.get('metadata', {}).get('total_articles', 0)
+            except (json.JSONDecodeError, KeyError):
+                article_count = 0
+
+            # Parse month for label
+            try:
+                dt = datetime.strptime(month_key, '%Y-%m')
+                label = dt.strftime('%b %Y')  # e.g. "Feb 2026"
+            except ValueError:
+                label = month_key
+
+            months.append({
+                'month': month_key,
+                'label': label,
+                'file': f'{month_key}.json',
+                'article_count': article_count
+            })
+
+        index = {'months': months}
+        with open(archive_dir / 'index.json', 'w', encoding='utf-8') as f:
+            json.dump(index, f, indent=2)
 
     def save_summary(self, data: Dict):
         summary_path = self.output_dir / 'summary.txt'

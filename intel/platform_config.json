@@ -28,6 +28,9 @@
     "clustering_enabled": true,
     "heatmap_enabled": true
   },
+  "display_settings": {
+    "max_age_hours": 720
+  },
   "enrichment": {
     "enabled": true,
     "cache_duration_hours": 24,
