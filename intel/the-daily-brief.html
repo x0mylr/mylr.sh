@@ -746,6 +746,105 @@
                 display: none;
             }
         }
+
+        /* ============================================
+           AI DAILY BRIEF PANEL
+        ============================================ */
+        .ai-brief-panel {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: var(--charcoal-elevated);
+            border-left: 3px solid var(--burnt-sienna);
+        }
+
+        .ai-brief-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+            user-select: none;
+        }
+
+        .ai-brief-title {
+            font-size: 1em;
+            color: var(--burnt-sienna-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .ai-brief-toggle-icon {
+            color: var(--burnt-sienna);
+            font-size: 0.85em;
+            transition: transform 0.2s;
+        }
+
+        .ai-brief-panel[aria-expanded="false"] .ai-brief-toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .ai-brief-body {
+            padding-top: 12px;
+        }
+
+        .ai-brief-panel[aria-expanded="false"] .ai-brief-body {
+            display: none;
+        }
+
+        .ai-brief-text {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+
+        .ai-brief-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 0.75em;
+            color: var(--text-muted);
+        }
+
+        .ai-provider-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-provider-badge.provider-claude {
+            background: rgba(154, 76, 48, 0.2);
+            border: 1px solid var(--burnt-sienna);
+            color: var(--burnt-sienna-light);
+        }
+
+        .ai-provider-badge.provider-ollama {
+            background: rgba(79, 195, 247, 0.2);
+            border: 1px solid var(--intel-blue);
+            color: var(--intel-blue);
+        }
+
+        .ai-provider-badge.provider-none {
+            background: var(--charcoal);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+        }
+
+        .ai-brief-unavailable {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            font-style: italic;
+            padding: 8px 0;
+        }
     </style>
 </head>
 <body>
@@ -997,6 +1096,33 @@
 
         <!-- RIGHT CONTEXT PANEL -->
         <aside class="context-panel" role="complementary" aria-label="Threat context and trends">
+
+            <!-- AI DAILY BRIEF PANEL -->
+            <div
+                class="ai-brief-panel"
+                id="ai-brief-panel"
+                aria-expanded="true"
+                aria-label="AI Daily Brief"
+                role="region"
+            >
+                <div
+                    class="ai-brief-header"
+                    id="ai-brief-toggle"
+                    tabindex="0"
+                    role="button"
+                    aria-controls="ai-brief-body"
+                    aria-expanded="true"
+                >
+                    <span class="ai-brief-title">AI Daily Brief</span>
+                    <span class="ai-brief-toggle-icon" aria-hidden="true">&#9660;</span>
+                </div>
+                <div class="ai-brief-body" id="ai-brief-body">
+                    <div class="ai-brief-unavailable" id="ai-brief-loading">
+                        Loading AI brief...
+                    </div>
+                </div>
+            </div>
+
             <section class="panel-section">
                 <h2 class="panel-title">TRENDING ATT&amp;CK</h2>
                 <div class="trending-attacks" role="list" aria-label="Trending ATT&CK techniques">

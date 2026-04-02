@@ -43,6 +43,13 @@ try:
 except ImportError:
     GEOPY_AVAILABLE = False
 
+# AI agent import (optional - graceful degradation if module absent)
+try:
+    from ai_agent import AIAgent
+    AI_AGENT_AVAILABLE = True
+except ImportError:
+    AI_AGENT_AVAILABLE = False
+
 
 class ThreatEnrichment:
     """Handle API-based threat intelligence enrichment"""
@@ -565,6 +572,12 @@ class FeedAggregator:
         self.geocoding = GeocodingService(geocode_cache, countries_db_path)
         self.defcon_calc = DEFCONCalculator(self.platform_config.get('defcon', {}))
 
+        # Initialize AI agent (additive - does not affect existing behaviour)
+        ai_config = self.platform_config.get("ai", {})
+        self.ai_agent = None
+        if AI_AGENT_AVAILABLE and ai_config.get("enabled", False):
+            self.ai_agent = AIAgent(project_dir, ai_config)
+
         # Load API config for auth key resolution (JSON API feeds)
         self.api_config = {}
         if api_config_path.exists():
@@ -1062,6 +1075,20 @@ class FeedAggregator:
 
     def save_output(self, data: Dict):
         output_file = self.output_dir / 'feed_data.json'
+
+        # AI summarization (additive) - runs before json.dump for atomic write
+        if self.ai_agent is not None:
+            print("\n  Generating AI executive brief...")
+            ai_result = self.ai_agent.summarize_feeds(data['articles'], data['metadata'])
+            data['metadata']['ai_summary'] = ai_result.get('ai_summary')
+            data['metadata']['ai_summary_generated_at'] = ai_result.get('ai_summary_generated_at')
+            data['metadata']['ai_provider_used'] = ai_result.get('ai_provider_used', 'none')
+            provider = ai_result.get('ai_provider_used', 'none')
+            if ai_result.get('ai_summary'):
+                print(f"  AI brief ready (provider: {provider})")
+            else:
+                print(f"  AI brief unavailable (provider: {provider})")
+
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
         print(f"\n  Saved {data['metadata']['total_articles']} articles to {output_file}")

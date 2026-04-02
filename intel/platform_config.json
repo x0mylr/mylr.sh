@@ -41,5 +41,23 @@
     "cache_enabled": true,
     "provider": "nominatim",
     "user_agent": "TheDailyBrief/1.0"
+  },
+  "ai": {
+    "enabled": false,
+    "primary_provider": "claude",
+    "fallback_provider": "ollama",
+    "cache_ttl_minutes": 25,
+    "claude": {
+      "model": "claude-sonnet-4-6",
+      "max_tokens": 1024
+    },
+    "ollama": {
+      "base_url": "http://localhost:11434",
+      "model": "llama3"
+    },
+    "summarization": {
+      "enabled": true,
+      "max_articles": 20
+    }
   }
 }

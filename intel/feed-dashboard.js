@@ -152,6 +152,9 @@ class FeedDashboard {
 
         // Cache DOM references for metrics (avoid nth-child fragility)
         this._metricEls = {};
+
+        // AI brief state
+        this._aiBriefExpanded = true;
     }
 
     async init() {
@@ -171,8 +174,10 @@ class FeedDashboard {
         this.updateSectorStats();
         this.updateGeoStats();
         this.updateTTPsList();
+        this.updateAIBrief();
         this.renderFeed();
         this.attachEventListeners();
+        this._initAIBriefToggle();
         this.handleUrlArticleParam();
         this.loadArchiveIndex();
 
@@ -401,6 +406,7 @@ class FeedDashboard {
         this.updateSectorStats();
         this.updateGeoStats();
         this.updateTTPsList();
+        this.updateAIBrief();
         this.renderFeed();
     }
 
@@ -701,6 +707,76 @@ class FeedDashboard {
             ttpsList.appendChild(
                 DOM.create('div', { role: 'listitem', textContent: `● ${name} (${count})` })
             );
+        });
+    }
+
+    /* ============================================
+       AI DAILY BRIEF
+    ============================================ */
+    updateAIBrief() {
+        const panel = DOM.qs('#ai-brief-panel');
+        const body = DOM.qs('#ai-brief-body');
+        if (!panel || !body) return;
+
+        const meta = this.feedData && this.feedData.metadata ? this.feedData.metadata : {};
+        const summary = typeof meta.ai_summary === 'string' ? meta.ai_summary.trim() : null;
+        const generatedAt = meta.ai_summary_generated_at || null;
+        const provider = typeof meta.ai_provider_used === 'string' ? meta.ai_provider_used : 'none';
+
+        DOM.clear(body);
+
+        if (!summary) {
+            body.appendChild(
+                DOM.create('div', {
+                    className: 'ai-brief-unavailable',
+                    textContent: provider === 'none'
+                        ? 'AI brief not available. Enable AI in platform config.'
+                        : 'AI brief pending generation.'
+                })
+            );
+            return;
+        }
+
+        // Safe plain-text rendering — textContent only, never innerHTML
+        const textEl = DOM.create('p', {
+            className: 'ai-brief-text',
+            textContent: summary
+        });
+        body.appendChild(textEl);
+
+        // Footer: timestamp + provider badge
+        const providerLabels = { claude: 'Claude AI', ollama: 'Ollama (local)', none: 'Unavailable' };
+        const providerLabel = providerLabels[provider] || provider;
+        const footer = DOM.create('div', { className: 'ai-brief-footer' }, [
+            DOM.create('span', {
+                textContent: generatedAt ? `Generated: ${this.formatDate(generatedAt)}` : ''
+            }),
+            DOM.create('span', {
+                className: `ai-provider-badge provider-${provider}`,
+                textContent: providerLabel
+            })
+        ]);
+        body.appendChild(footer);
+    }
+
+    _initAIBriefToggle() {
+        const toggle = DOM.qs('#ai-brief-toggle');
+        const panel = DOM.qs('#ai-brief-panel');
+        if (!toggle || !panel) return;
+
+        const applyState = (expanded) => {
+            this._aiBriefExpanded = expanded;
+            panel.setAttribute('aria-expanded', String(expanded));
+            toggle.setAttribute('aria-expanded', String(expanded));
+        };
+
+        toggle.addEventListener('click', () => applyState(!this._aiBriefExpanded));
+
+        toggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                applyState(!this._aiBriefExpanded);
+            }
         });
     }
 
