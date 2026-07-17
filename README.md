@@ -8,7 +8,7 @@ Security research and threat intelligence.
 
 A real-time threat intelligence platform that aggregates, enriches, and visualises cybersecurity intelligence from 20+ authoritative sources.
 
-**Live at [intel.mylr.sh](https://intel.mylr.sh)**
+**Live at**
 
 ### Features
 
