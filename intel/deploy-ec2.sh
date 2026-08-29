@@ -321,9 +321,9 @@ echo ""
 # Check article count
 if [ -f "$WEB_ROOT/output/feed_data.json" ]; then
     ARTICLE_COUNT=$(python3 -c "import json; d=json.load(open('$WEB_ROOT/output/feed_data.json')); print(d['metadata']['total_articles'])" 2>/dev/null || echo "?")
-    DEFCON=$(python3 -c "import json; d=json.load(open('$WEB_ROOT/output/feed_data.json')); print(d['metadata']['defcon_level'])" 2>/dev/null || echo "?")
-    echo "  Articles:  $ARTICLE_COUNT"
-    echo "  DEFCON:    $DEFCON"
+    THREAT_LEVEL=$(python3 -c "import json; d=json.load(open('$WEB_ROOT/output/feed_data.json')); print(d['metadata']['threat_level'])" 2>/dev/null || echo "?")
+    echo "  Articles:     $ARTICLE_COUNT"
+    echo "  Threat Level: $THREAT_LEVEL"
 else
     warn "Could not read feed data for verification"
 fi

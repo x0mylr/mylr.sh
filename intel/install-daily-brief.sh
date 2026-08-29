@@ -181,7 +181,7 @@ cat > "${INSTALL_DIR}/config/platform_config.json" << 'EOF'
     "update_interval_minutes": 30,
     "timezone": "UTC"
   },
-  "defcon": {
+  "threat_level": {
     "auto_calculate": true,
     "manual_override": null,
     "thresholds": {

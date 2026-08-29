@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 The Daily Brief - Enhanced Feed Aggregator
-Features: DEFCON calculation, geocoding, API enrichment, threat mapping
+Features: threat level scoring, geocoding, API enrichment, threat mapping
 
 Usage:
     python aggregate_feeds_enhanced.py                  # Run from project dir
@@ -16,6 +16,7 @@ import re
 import sys
 import time
 import argparse
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -47,12 +48,18 @@ except ImportError:
 class ThreatEnrichment:
     """Handle API-based threat intelligence enrichment"""
 
-    def __init__(self, api_config_path: Path, cache_dir: Path):
+    def __init__(self, api_config_path: Path, cache_dir: Path, config: Optional[Dict] = None):
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.api_config = {}
         self.otx_client = None
         self.vt_client = None
+
+        # platform_config.json's "enrichment" section
+        self.config = config or {}
+        self.cache_ttl_seconds = self.config.get('cache_duration_hours', 24) * 3600
+        self.max_retries = max(1, self.config.get('max_retries', 1))
+        self.timeout_seconds = self.config.get('timeout_seconds', 10)
 
         # Load API configuration if file exists
         if api_config_path.exists():
@@ -76,10 +83,23 @@ class ThreatEnrichment:
             api_key = self.api_config['virustotal'].get('api_key', '')
             if api_key and api_key != 'YOUR_VIRUSTOTAL_API_KEY':
                 try:
-                    self.vt_client = vt.Client(api_key)
+                    self.vt_client = vt.Client(api_key, timeout=self.timeout_seconds)
                     print("  VirusTotal client initialized")
                 except Exception as e:
                     print(f"  Warning: VT init failed: {e}")
+
+    def _with_retries(self, func, label: str):
+        """Call func() up to self.max_retries times, retrying on any exception with a short backoff."""
+        last_exc = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return func()
+            except Exception as e:
+                last_exc = e
+                if attempt < self.max_retries:
+                    time.sleep(1.5 * attempt)
+        print(f"  {label} error after {self.max_retries} attempt(s): {last_exc}")
+        return None
 
     def enrich_article(self, article: Dict) -> Dict:
         """Enrich article with threat intelligence data"""
@@ -187,32 +207,30 @@ class ThreatEnrichment:
         cache_file = self.cache_dir / f"ip_{ip}.json"
         if cache_file.exists():
             age = time.time() - cache_file.stat().st_mtime
-            if age < 86400:
+            if age < self.cache_ttl_seconds:
                 with open(cache_file, encoding='utf-8') as f:
                     return json.load(f)
 
         intel = {'ip': ip, 'sources': []}
 
         if self.otx_client:
-            try:
-                otx_data = self.otx_client.get_indicator_details_full(OTXv2.IndicatorTypes.IPv4, ip)
-                if otx_data:
-                    intel['sources'].append('OTX')
-                    intel['otx_pulses'] = len(otx_data.get('general', {}).get('pulse_info', {}).get('pulses', []))
-                    intel['malicious'] = otx_data.get('general', {}).get('pulse_info', {}).get('count', 0) > 0
-            except Exception as e:
-                print(f"  OTX error for {ip}: {e}")
+            otx_data = self._with_retries(
+                lambda: self.otx_client.get_indicator_details_full(OTXv2.IndicatorTypes.IPv4, ip),
+                label=f"OTX for {ip}"
+            )
+            if otx_data:
+                intel['sources'].append('OTX')
+                intel['otx_pulses'] = len(otx_data.get('general', {}).get('pulse_info', {}).get('pulses', []))
+                intel['malicious'] = otx_data.get('general', {}).get('pulse_info', {}).get('count', 0) > 0
 
         if self.vt_client:
-            try:
-                ip_obj = self.vt_client.get_object(f"/ip_addresses/{ip}")
+            ip_obj = self._with_retries(lambda: self.vt_client.get_object(f"/ip_addresses/{ip}"), label=f"VirusTotal for {ip}")
+            if ip_obj:
                 intel['sources'].append('VirusTotal')
                 intel['vt_malicious'] = ip_obj.last_analysis_stats.get('malicious', 0)
                 intel['vt_suspicious'] = ip_obj.last_analysis_stats.get('suspicious', 0)
                 intel['country'] = getattr(ip_obj, 'country', None)
                 intel['asn'] = getattr(ip_obj, 'asn', None)
-            except Exception as e:
-                print(f"  VirusTotal error for {ip}: {e}")
 
         if intel['sources']:
             with open(cache_file, 'w', encoding='utf-8') as f:
@@ -226,29 +244,27 @@ class ThreatEnrichment:
         cache_file = self.cache_dir / f"domain_{domain}.json"
         if cache_file.exists():
             age = time.time() - cache_file.stat().st_mtime
-            if age < 86400:
+            if age < self.cache_ttl_seconds:
                 with open(cache_file, encoding='utf-8') as f:
                     return json.load(f)
 
         intel = {'domain': domain, 'sources': []}
 
         if self.otx_client:
-            try:
-                otx_data = self.otx_client.get_indicator_details_full(OTXv2.IndicatorTypes.DOMAIN, domain)
-                if otx_data:
-                    intel['sources'].append('OTX')
-                    intel['otx_pulses'] = len(otx_data.get('general', {}).get('pulse_info', {}).get('pulses', []))
-            except Exception as e:
-                print(f"  OTX error for {domain}: {e}")
+            otx_data = self._with_retries(
+                lambda: self.otx_client.get_indicator_details_full(OTXv2.IndicatorTypes.DOMAIN, domain),
+                label=f"OTX for {domain}"
+            )
+            if otx_data:
+                intel['sources'].append('OTX')
+                intel['otx_pulses'] = len(otx_data.get('general', {}).get('pulse_info', {}).get('pulses', []))
 
         if self.vt_client:
-            try:
-                domain_obj = self.vt_client.get_object(f"/domains/{domain}")
+            domain_obj = self._with_retries(lambda: self.vt_client.get_object(f"/domains/{domain}"), label=f"VirusTotal for {domain}")
+            if domain_obj:
                 intel['sources'].append('VirusTotal')
                 intel['vt_malicious'] = domain_obj.last_analysis_stats.get('malicious', 0)
                 intel['reputation'] = getattr(domain_obj, 'reputation', None)
-            except Exception as e:
-                print(f"  VirusTotal error for {domain}: {e}")
 
         if intel['sources']:
             with open(cache_file, 'w', encoding='utf-8') as f:
@@ -262,22 +278,20 @@ class ThreatEnrichment:
         cache_file = self.cache_dir / f"hash_{hash_val}.json"
         if cache_file.exists():
             age = time.time() - cache_file.stat().st_mtime
-            if age < 86400:
+            if age < self.cache_ttl_seconds:
                 with open(cache_file, encoding='utf-8') as f:
                     return json.load(f)
 
         intel = {'hash': hash_val, 'sources': []}
 
         if self.vt_client:
-            try:
-                file_obj = self.vt_client.get_object(f"/files/{hash_val}")
+            file_obj = self._with_retries(lambda: self.vt_client.get_object(f"/files/{hash_val}"), label=f"VirusTotal for {hash_val}")
+            if file_obj:
                 intel['sources'].append('VirusTotal')
                 intel['vt_malicious'] = file_obj.last_analysis_stats.get('malicious', 0)
                 intel['vt_total'] = sum(file_obj.last_analysis_stats.values())
                 intel['file_type'] = getattr(file_obj, 'type_description', None)
                 intel['names'] = file_obj.names[:5] if hasattr(file_obj, 'names') else []
-            except Exception as e:
-                print(f"  VirusTotal error for {hash_val}: {e}")
 
         if intel['sources']:
             with open(cache_file, 'w', encoding='utf-8') as f:
@@ -290,10 +304,17 @@ class ThreatEnrichment:
 class GeocodingService:
     """Handle geographic location extraction and caching"""
 
-    def __init__(self, cache_dir: Path, countries_db_path: Path):
+    # Nominatim's usage policy caps live requests at 1/sec: https://operations.osmfoundation.org/policies/nominatim/
+    MIN_NOMINATIM_INTERVAL_SECONDS = 1.1
+    DISK_CACHE_TTL_SECONDS = 30 * 86400  # geocoded locations don't change; cache generously
+
+    def __init__(self, cache_dir: Path, countries_db_path: Path, config: Optional[Dict] = None):
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.countries = {}
+        self.config = config or {}
+        self.disk_cache_enabled = self.config.get('cache_enabled', True)
+        self._last_nominatim_call = 0.0
 
         # Load country coordinates database
         if countries_db_path.exists():
@@ -310,7 +331,45 @@ class GeocodingService:
         # Initialize geocoder
         self.geocoder = None
         if GEOPY_AVAILABLE:
-            self.geocoder = Nominatim(user_agent="TheDailyBrief/1.0", timeout=10)
+            user_agent = self.config.get('user_agent', 'TheDailyBrief/1.0')
+            self.geocoder = Nominatim(user_agent=user_agent, timeout=10)
+
+    def _disk_cache_path(self, location: str) -> Path:
+        key = hashlib.md5(location.strip().lower().encode()).hexdigest()
+        return self.cache_dir / f"loc_{key}.json"
+
+    def _read_disk_cache(self, location: str) -> Optional[Dict]:
+        if not self.disk_cache_enabled:
+            return None
+        cache_file = self._disk_cache_path(location)
+        if cache_file.exists():
+            age = time.time() - cache_file.stat().st_mtime
+            if age < self.DISK_CACHE_TTL_SECONDS:
+                try:
+                    with open(cache_file, encoding='utf-8') as f:
+                        return json.load(f)
+                except (json.JSONDecodeError, IOError):
+                    return None
+        return None
+
+    def _write_disk_cache(self, location: str, geo_data: Dict) -> None:
+        if not self.disk_cache_enabled:
+            return
+        try:
+            with open(self._disk_cache_path(location), 'w', encoding='utf-8') as f:
+                json.dump(geo_data, f)
+        except IOError:
+            pass
+
+    def _geocode_live(self, location: str):
+        """Call Nominatim directly, throttled to its 1 req/sec usage policy."""
+        elapsed = time.time() - self._last_nominatim_call
+        if elapsed < self.MIN_NOMINATIM_INTERVAL_SECONDS:
+            time.sleep(self.MIN_NOMINATIM_INTERVAL_SECONDS - elapsed)
+        try:
+            return self.geocoder.geocode(location, exactly_one=True, language='en')
+        finally:
+            self._last_nominatim_call = time.time()
 
     @lru_cache(maxsize=1000)
     def geocode_article(self, title: str, summary: str, country_hint: str = None) -> Optional[Dict]:
@@ -335,20 +394,28 @@ class GeocodingService:
         if self.geocoder and not location:
             location = self.extract_location_generic(text)
             if location and len(location) > 3:
+                cached = self._read_disk_cache(location)
+                if cached is not None:
+                    return cached or None  # cached "no result" is stored as {}
+
                 try:
-                    geo_data = self.geocoder.geocode(location, exactly_one=True, language='en')
+                    geo_data = self._geocode_live(location)
                     if geo_data:
                         # Only accept results that look like real country/city names
                         addr = geo_data.address or ''
                         # Check if the geocoded address contains recognizable place types
                         if any(c in addr for c in self.countries.keys()):
                             country_in_addr = next((c for c in self.countries.keys() if c in addr), location)
-                            return {
+                            result = {
                                 'country': country_in_addr,
                                 'latitude': geo_data.latitude,
                                 'longitude': geo_data.longitude,
                                 'source': 'geocoder'
                             }
+                            self._write_disk_cache(location, result)
+                            return result
+                    # No usable result - cache the miss so we don't hit Nominatim again for it
+                    self._write_disk_cache(location, {})
                 except (GeocoderTimedOut, GeocoderServiceError):
                     pass
                 except Exception:
@@ -415,50 +482,10 @@ class GeocodingService:
         return None
 
 
-def scrape_defcon_level():
-    """Scrape current DEFCON estimate from defconlevel.com (OSINT)"""
-    DEFCON_MAP = {
-        5: {'name': 'NORMAL', 'color': '#44ff88', 'description': 'Normal peacetime readiness'},
-        4: {'name': 'ABOVE NORMAL', 'color': '#4488ff', 'description': 'Increased intelligence watch and security'},
-        3: {'name': 'ELEVATED', 'color': '#ffcc00', 'description': 'Increase in force readiness above normal'},
-        2: {'name': 'HIGH', 'color': '#ff9944', 'description': 'Armed forces ready to deploy in 6 hours'},
-        1: {'name': 'MAXIMUM', 'color': '#ff0000', 'description': 'Maximum readiness, nuclear war imminent'}
-    }
-    try:
-        resp = requests.get(
-            'https://www.defconlevel.com/current-level.php',
-            headers={'User-Agent': 'The Daily Brief/1.0 (OSINT Aggregator)'},
-            timeout=15
-        )
-        resp.raise_for_status()
-        html = resp.text
+class ThreatLevelCalculator:
+    """Calculate an overall threat level based on aggregated intelligence feed data"""
 
-        # Try image src pattern: /images/defcon-3.png
-        match = re.search(r'/images/defcon-(\d)\.png', html)
-        if not match:
-            # Fallback: text pattern "DEFCON 3"
-            match = re.search(r'DEFCON\s+(\d)', html, re.IGNORECASE)
-        if not match:
-            return None
-
-        level = int(match.group(1))
-        if level < 1 or level > 5:
-            return None
-
-        details = DEFCON_MAP[level].copy()
-        details['source'] = 'defconlevel.com (OSINT Estimate)'
-        details['scraped_at'] = datetime.now().isoformat()
-
-        return {'level': level, 'details': details}
-    except Exception as e:
-        print(f"  [WARN] Could not scrape DEFCON level: {e}")
-        return None
-
-
-class DEFCONCalculator:
-    """Fallback: Calculate threat level based on intelligence feed data"""
-
-    DEFCON_LEVELS = {
+    THREAT_LEVELS = {
         1: {'name': 'MAXIMUM', 'color': '#ff0000', 'description': 'Maximum readiness, nuclear war imminent'},
         2: {'name': 'HIGH', 'color': '#ff9944', 'description': 'Armed forces ready to deploy in 6 hours'},
         3: {'name': 'ELEVATED', 'color': '#ffcc00', 'description': 'Increase in force readiness above normal'},
@@ -514,14 +541,14 @@ class DEFCONCalculator:
         elif len(malware_articles) >= 10: score += 0.5
         elif len(malware_articles) >= 5: score += 0.25
 
-        # Convert score to DEFCON level (lower number = more severe)
+        # Convert score to threat level (lower number = more severe)
         if score >= self.thresholds['critical']: level = 1
         elif score >= self.thresholds['severe']: level = 2
         elif score >= self.thresholds['elevated']: level = 3
         elif score >= self.thresholds['guarded']: level = 4
         else: level = 5
 
-        details = self.DEFCON_LEVELS[level].copy()
+        details = self.THREAT_LEVELS[level].copy()
         details['score'] = round(score, 2)
         details['breakdown'] = breakdown
         details['calculated_at'] = datetime.now().isoformat()
@@ -561,9 +588,9 @@ class FeedAggregator:
         cache_dir = project_dir / 'data' / 'api_cache'
         geocode_cache = project_dir / 'data' / 'geocode_cache'
 
-        self.enrichment = ThreatEnrichment(api_config_path, cache_dir)
-        self.geocoding = GeocodingService(geocode_cache, countries_db_path)
-        self.defcon_calc = DEFCONCalculator(self.platform_config.get('defcon', {}))
+        self.enrichment = ThreatEnrichment(api_config_path, cache_dir, self.platform_config.get('enrichment', {}))
+        self.geocoding = GeocodingService(geocode_cache, countries_db_path, self.platform_config.get('geocoding', {}))
+        self.threat_level_calc = ThreatLevelCalculator(self.platform_config.get('threat_level', {}))
 
         # Load API config for auth key resolution (JSON API feeds)
         self.api_config = {}
@@ -641,7 +668,9 @@ class FeedAggregator:
         except requests.exceptions.RequestException as e:
             print(f"    HTTP error fetching {feed_config['name']}: {str(e)}")
             return []
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
+        except Exception as e:
+            # Broad on purpose: a malformed/unexpected response shape from any one feed
+            # (bad field types, unexpected nesting, etc.) must not crash the whole run.
             print(f"    Parse error for {feed_config['name']}: {str(e)}")
             return []
 
@@ -682,7 +711,9 @@ class FeedAggregator:
         except requests.exceptions.RequestException as e:
             print(f"    HTTP error fetching {feed_config['name']}: {str(e)}")
             return []
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
+        except Exception as e:
+            # Broad on purpose: a malformed/unexpected response shape from any one feed
+            # (bad field types, unexpected nesting, etc.) must not crash the whole run.
             print(f"    Parse error for {feed_config['name']}: {str(e)}")
             return []
 
@@ -793,56 +824,57 @@ class FeedAggregator:
         return article
 
     def _extract_structured_iocs(self, entry: Dict, article: Dict, feed_config: Dict) -> None:
-        """Extract IOCs directly from structured data in JSON API entries"""
-        feed_id = feed_config['id']
+        """Extract IOCs directly from structured data in JSON API entries.
+
+        Driven entirely by the optional `structured_iocs` block in a feeds.json feed
+        entry (see feeds.json for the schema) - adding a new feed with structured IOCs
+        is a config change, not a Python change.
+        """
+        schema = feed_config.get('structured_iocs')
+        if not schema:
+            return
 
         if 'iocs' not in article:
             article['iocs'] = {'ips': [], 'domains': [], 'hashes': [], 'cves': [], 'urls': []}
-
         iocs = article['iocs']
 
-        if feed_id == 'cisa-kev':
-            cve = entry.get('cveID', '')
-            if cve and cve not in iocs['cves']:
-                iocs['cves'].append(cve)
+        def add(bucket: str, value):
+            if value and value not in iocs[bucket]:
+                iocs[bucket].append(value)
 
-        elif feed_id == 'abusech-urlhaus':
-            url = entry.get('url', '')
-            if url and url not in iocs['urls']:
-                iocs['urls'].append(url)
-            host = entry.get('host', '')
+        for field in schema.get('cve_fields', []):
+            add('cves', entry.get(field, ''))
+
+        for field in schema.get('hash_fields', []):
+            add('hashes', entry.get(field, ''))
+
+        for field in schema.get('url_fields', []):
+            add('urls', entry.get(field, ''))
+
+        for field in schema.get('host_fields', []):
+            host = entry.get(field, '')
             if host:
                 if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', host):
-                    if host not in iocs['ips']:
-                        iocs['ips'].append(host)
+                    add('ips', host)
                 elif '.' in host:
-                    if host not in iocs['domains']:
-                        iocs['domains'].append(host)
+                    add('domains', host)
 
-        elif feed_id == 'abusech-threatfox':
-            ioc_value = entry.get('ioc', '')
-            ioc_type = entry.get('ioc_type', '')
-            if ioc_type == 'ip:port':
-                ip = ioc_value.split(':')[0] if ':' in ioc_value else ioc_value
-                if ip not in iocs['ips']:
-                    iocs['ips'].append(ip)
-            elif ioc_type == 'domain':
-                if ioc_value not in iocs['domains']:
-                    iocs['domains'].append(ioc_value)
-            elif ioc_type == 'url':
-                if ioc_value not in iocs['urls']:
-                    iocs['urls'].append(ioc_value)
-            # Extract hashes from malware_samples
-            for sample in entry.get('malware_samples', []):
-                sha256 = sample.get('sha256_hash', '')
-                if sha256 and sha256 not in iocs['hashes']:
-                    iocs['hashes'].append(sha256)
+        # A single field pair where one field holds the IOC value and another names its
+        # type (e.g. ThreatFox's ioc/ioc_type), mapped to a bucket via type_map.
+        typed = schema.get('typed_ioc')
+        if typed:
+            value = entry.get(typed.get('value_field', ''), '')
+            mapped = typed.get('type_map', {}).get(entry.get(typed.get('type_field', ''), ''))
+            if value and mapped:
+                if mapped == 'ip_port':
+                    add('ips', value.split(':')[0] if ':' in value else value)
+                elif mapped in ('ip', 'domain', 'url', 'hash', 'cve'):
+                    add({'ip': 'ips', 'domain': 'domains', 'url': 'urls', 'hash': 'hashes', 'cve': 'cves'}[mapped], value)
 
-        elif feed_id == 'abusech-malwarebazaar':
-            for hash_type in ['sha256_hash', 'sha1_hash', 'md5_hash']:
-                h = entry.get(hash_type, '')
-                if h and h not in iocs['hashes']:
-                    iocs['hashes'].append(h)
+        # Hashes nested inside a list of sub-objects (e.g. ThreatFox's malware_samples)
+        for nested in schema.get('nested_hash_lists', []):
+            for item in entry.get(nested.get('list_field', ''), []):
+                add('hashes', item.get(nested.get('hash_field', ''), ''))
 
     def generate_article_id(self, entry: Dict) -> str:
         unique_str = f"{entry.get('link', '')}{entry.get('title', '')}"
@@ -987,17 +1019,10 @@ class FeedAggregator:
 
         all_articles.sort(key=lambda x: (x['priority'], x['published']), reverse=False)
 
-        # Try scraping DEFCON from defconlevel.com first, fall back to internal calc
-        scraped = scrape_defcon_level()
-        if scraped:
-            defcon_level = scraped['level']
-            defcon_details = scraped['details']
-            print(f"\n  DEFCON {defcon_level} - {defcon_details['name']} (source: defconlevel.com)")
-        else:
-            defcon_level, defcon_details = self.defcon_calc.calculate(all_articles)
-            defcon_details['source'] = 'Internal Calculation'
-            print(f"\n  DEFCON {defcon_level} - {defcon_details['name']} (internal)")
-        print(f"  {defcon_details['description']}")
+        threat_level, threat_level_details = self.threat_level_calc.calculate(all_articles)
+        threat_level_details['source'] = 'Internal Calculation'
+        print(f"\n  THREAT LEVEL {threat_level} - {threat_level_details['name']}")
+        print(f"  {threat_level_details['description']}")
 
         geo_stats = self.calculate_geo_stats(all_articles)
 
@@ -1007,8 +1032,8 @@ class FeedAggregator:
                 'total_articles': len(all_articles),
                 'feeds_processed': len(enabled_feeds),
                 'feed_stats': feed_stats,
-                'defcon_level': defcon_level,
-                'defcon_details': defcon_details,
+                'threat_level': threat_level,
+                'threat_level_details': threat_level_details,
                 'geo_stats': geo_stats
             },
             'articles': all_articles
@@ -1101,7 +1126,7 @@ class FeedAggregator:
         # Recalculate metadata for the full archive month
         geo_stats = self.calculate_geo_stats(existing_articles)
 
-        # Get DEFCON for archive (use current scraped/calculated value)
+        # Use the current run's threat level for the archive's rolled-up metadata
         archive_data = {
             'metadata': {
                 'generated_at': datetime.now().isoformat(),
@@ -1109,8 +1134,8 @@ class FeedAggregator:
                 'total_articles': len(existing_articles),
                 'feeds_processed': data['metadata']['feeds_processed'],
                 'feed_stats': data['metadata']['feed_stats'],
-                'defcon_level': data['metadata']['defcon_level'],
-                'defcon_details': data['metadata']['defcon_details'],
+                'threat_level': data['metadata']['threat_level'],
+                'threat_level_details': data['metadata']['threat_level_details'],
                 'geo_stats': geo_stats
             },
             'articles': existing_articles
@@ -1166,10 +1191,10 @@ class FeedAggregator:
             f.write(f"Total Articles: {data['metadata']['total_articles']}\n")
             f.write(f"Feeds Processed: {data['metadata']['feeds_processed']}\n\n")
 
-            defcon = data['metadata']['defcon_details']
-            f.write(f"THREAT LEVEL: DEFCON {data['metadata']['defcon_level']} - {defcon['name']}\n")
-            f.write(f"Description: {defcon['description']}\n")
-            f.write(f"Source: {defcon.get('source', 'Internal')}\n\n")
+            threat = data['metadata']['threat_level_details']
+            f.write(f"THREAT LEVEL: {data['metadata']['threat_level']} - {threat['name']}\n")
+            f.write(f"Description: {threat['description']}\n")
+            f.write(f"Source: {threat.get('source', 'Internal')}\n\n")
 
             geo = data['metadata']['geo_stats']
             f.write(f"Geographic Coverage: {geo['total_geolocated']} articles geolocated\n")
@@ -1219,9 +1244,17 @@ def main():
         print("  Make sure you're running from the project directory or use --project-dir")
         sys.exit(1)
 
-    aggregator = FeedAggregator(project_dir)
-    data = aggregator.aggregate_all_feeds()
-    aggregator.save_output(data)
+    try:
+        aggregator = FeedAggregator(project_dir)
+        data = aggregator.aggregate_all_feeds()
+        aggregator.save_output(data)
+    except Exception:
+        # A single unhandled exception here would otherwise leave the last successful
+        # feed_data.json in place with no signal that this cron run failed silently.
+        print("\n  AGGREGATION FAILED - existing output was left unchanged")
+        traceback.print_exc()
+        print("=" * 70 + "\n")
+        sys.exit(1)
 
     print(f"\n  Feed aggregation complete!")
     print(f"  Output: {project_dir / 'output' / 'feed_data.json'}")

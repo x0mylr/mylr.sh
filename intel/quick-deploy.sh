@@ -31,7 +31,7 @@ cat << 'EOF'
 |  * Install system dependencies (nginx, python, etc.)           |
 |  * Create project structure                                    |
 |  * Deploy all application files                                |
-|  * Setup DEFCON automation                                     |
+|  * Setup threat-level automation                                |
 |  * Deploy interactive threat map                               |
 |  * Configure API enrichment                                    |
 |  * Setup cron jobs for auto-updates                            |
@@ -290,20 +290,20 @@ echo -e "${GREEN}  Web Server:${NC}         Nginx (if configured)"
 echo -e "${GREEN}  Dashboard:${NC}          http://localhost/"
 echo -e "${GREEN}  Threat Map:${NC}         http://localhost/map.html"
 echo -e "${GREEN}  Auto-Updates:${NC}       Every 30 minutes (cron)"
-echo -e "${GREEN}  DEFCON System:${NC}      Automated calculation"
+echo -e "${GREEN}  Threat Level System:${NC} Automated calculation"
 echo -e "${GREEN}  Geocoding:${NC}          60+ countries in database"
 echo -e "${GREEN}  API Enrichment:${NC}     VirusTotal, OTX ready"
 
-# Get DEFCON level from output
+# Get threat level from output
 if [ -f "${INSTALL_DIR}/output/feed_data.json" ]; then
-    DEFCON_LEVEL=$(python3 -c "import json; data=json.load(open('${INSTALL_DIR}/output/feed_data.json')); print(f'DEFCON {data[\"metadata\"][\"defcon_level\"]} - {data[\"metadata\"][\"defcon_details\"][\"name\"]}')" 2>/dev/null || echo "N/A")
+    THREAT_LEVEL=$(python3 -c "import json; data=json.load(open('${INSTALL_DIR}/output/feed_data.json')); print(f'{data[\"metadata\"][\"threat_level\"]} - {data[\"metadata\"][\"threat_level_details\"][\"name\"]}')" 2>/dev/null || echo "N/A")
     TOTAL_ARTICLES=$(python3 -c "import json; data=json.load(open('${INSTALL_DIR}/output/feed_data.json')); print(data['metadata']['total_articles'])" 2>/dev/null || echo "0")
     GEOLOCATED=$(python3 -c "import json; data=json.load(open('${INSTALL_DIR}/output/feed_data.json')); print(data['metadata']['geo_stats']['total_geolocated'])" 2>/dev/null || echo "0")
 
     echo ""
     echo -e "${BURNT_SIENNA}Current Status:${NC}"
     echo -e "--------------------------------------------------------------"
-    echo -e "${GREEN}  Threat Level:${NC}       ${DEFCON_LEVEL}"
+    echo -e "${GREEN}  Threat Level:${NC}       ${THREAT_LEVEL}"
     echo -e "${GREEN}  Total Articles:${NC}     ${TOTAL_ARTICLES}"
     echo -e "${GREEN}  Geolocated:${NC}         ${GEOLOCATED} articles"
 fi

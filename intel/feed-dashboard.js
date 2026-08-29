@@ -165,7 +165,7 @@ class FeedDashboard {
         });
 
         this.updateMetrics();
-        this.updateDEFCON();
+        this.updateThreatLevel();
         this.updateFilterCounts();
         this.updateTrending();
         this.updateSectorStats();
@@ -220,8 +220,8 @@ class FeedDashboard {
                 generated_at: now.toISOString(),
                 total_articles: 4,
                 feeds_processed: 4,
-                defcon_level: 3,
-                defcon_details: {
+                threat_level: 3,
+                threat_level_details: {
                     name: 'ELEVATED',
                     color: '#ff9944',
                     description: 'Sample data - run aggregator for live intel',
@@ -395,7 +395,7 @@ class FeedDashboard {
 
     refreshDashboard() {
         this.updateMetrics();
-        this.updateDEFCON();
+        this.updateThreatLevel();
         this.updateFilterCounts();
         this.updateTrending();
         this.updateSectorStats();
@@ -419,15 +419,16 @@ class FeedDashboard {
         this.animateCounter('active-apts', apts);
     }
 
-    updateDEFCON() {
-        const level = this.feedData.metadata.defcon_level;
-        const details = this.feedData.metadata.defcon_details;
+    updateThreatLevel() {
+        // Fall back to the old defcon_* keys for archive months saved before the rename.
+        const level = this.feedData.metadata.threat_level ?? this.feedData.metadata.defcon_level;
+        const details = this.feedData.metadata.threat_level_details ?? this.feedData.metadata.defcon_details ?? {};
         const el = this._metricEls['threat-level'];
 
         if (el) {
-            el.textContent = `DEFCON ${Sanitize.integer(level, 1, 5)}`;
-            // Use CSS class instead of inline style for DEFCON color
-            el.className = 'metric-value defcon-' + Sanitize.integer(level, 1, 5);
+            el.textContent = `LEVEL ${Sanitize.integer(level, 1, 5)}`;
+            // Use CSS class instead of inline style for threat-level color
+            el.className = 'metric-value threat-level-' + Sanitize.integer(level, 1, 5);
             const source = details.source || 'Internal';
             el.title = `${details.name || ''}: ${details.description || ''}\nSource: ${source}`;
         }
