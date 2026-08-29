@@ -28,7 +28,10 @@
       "priority": 1,
       "scope": "tactical",
       "audience": "technical",
-      "enabled": true
+      "enabled": true,
+      "structured_iocs": {
+        "cve_fields": ["cveID"]
+      }
     },
     {
       "id": "abusech-urlhaus",
@@ -53,7 +56,11 @@
       "priority": 1,
       "scope": "tactical",
       "audience": "technical",
-      "enabled": true
+      "enabled": true,
+      "structured_iocs": {
+        "url_fields": ["url"],
+        "host_fields": ["host"]
+      }
     },
     {
       "id": "abusech-threatfox",
@@ -79,7 +86,21 @@
       "priority": 1,
       "scope": "tactical",
       "audience": "technical",
-      "enabled": true
+      "enabled": true,
+      "structured_iocs": {
+        "typed_ioc": {
+          "value_field": "ioc",
+          "type_field": "ioc_type",
+          "type_map": {
+            "ip:port": "ip_port",
+            "domain": "domain",
+            "url": "url"
+          }
+        },
+        "nested_hash_lists": [
+          {"list_field": "malware_samples", "hash_field": "sha256_hash"}
+        ]
+      }
     },
     {
       "id": "abusech-malwarebazaar",
@@ -105,7 +126,10 @@
       "priority": 1,
       "scope": "tactical",
       "audience": "technical",
-      "enabled": true
+      "enabled": true,
+      "structured_iocs": {
+        "hash_fields": ["sha256_hash", "sha1_hash", "md5_hash"]
+      }
     },
     {
       "id": "bleepingcomputer",

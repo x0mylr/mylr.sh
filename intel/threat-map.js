@@ -86,8 +86,8 @@ class ThreatMap {
                 generated_at: now.toISOString(),
                 total_articles: 4,
                 feeds_processed: 4,
-                defcon_level: 3,
-                defcon_details: { name: 'ELEVATED', color: '#ff9944', score: 2.5 },
+                threat_level: 3,
+                threat_level_details: { name: 'ELEVATED', color: '#ff9944', score: 2.5 },
                 geo_stats: {
                     total_geolocated: 3,
                     countries: {
@@ -574,8 +574,9 @@ class ThreatMap {
                 const totalArticles = self.feedData.metadata.total_articles || 0;
                 const geolocated = self.feedData.metadata.geo_stats
                     ? self.feedData.metadata.geo_stats.total_geolocated : 0;
-                const defconLevel = self.feedData.metadata.defcon_level || '--';
-                const defconDetails = self.feedData.metadata.defcon_details || {};
+                // Fall back to the old defcon_* keys for archive months saved before the rename.
+                const threatLevel = self.feedData.metadata.threat_level ?? self.feedData.metadata.defcon_level ?? '--';
+                const threatLevelDetails = self.feedData.metadata.threat_level_details || self.feedData.metadata.defcon_details || {};
 
                 // Build legend with DOM
                 const headerEl = document.createElement('div');
@@ -613,10 +614,10 @@ class ThreatMap {
                 geoLine.textContent = `Geolocated: ${geolocated}`;
                 stats.appendChild(geoLine);
 
-                const defconLine = document.createElement('div');
-                defconLine.textContent = `DEFCON: ${defconLevel} - ${defconDetails.name || 'N/A'}`;
-                defconLine.style.color = defconDetails.color || '#ff9944';
-                stats.appendChild(defconLine);
+                const threatLevelLine = document.createElement('div');
+                threatLevelLine.textContent = `Threat Level: ${threatLevel} - ${threatLevelDetails.name || 'N/A'}`;
+                threatLevelLine.style.color = threatLevelDetails.color || '#ff9944';
+                stats.appendChild(threatLevelLine);
 
                 container.appendChild(stats);
 

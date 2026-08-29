@@ -14,7 +14,7 @@ A real-time threat intelligence platform that aggregates, enriches, and visualis
 
 - **Feed aggregation** — RSS/Atom and JSON API feeds across vulnerability disclosures, malware campaigns, APT activity, data breaches, and government advisories
 - **IOC extraction** — automatic identification of IPs, domains, file hashes, CVE IDs, and MITRE ATT&CK technique IDs from article content
-- **DEFCON scoring** — automated threat level calculation weighted across critical articles, active exploits, APT activity, and malware prevalence
+- **Threat level scoring** — automated threat level calculation weighted across critical articles, active exploits, APT activity, and malware prevalence
 - **Interactive threat map** — geolocated incidents on a Leaflet.js map with clustering and heatmap layers
 - **AI Daily Brief** — executive summary generated after each aggregation run, using Claude API with a local Ollama fallback
 - **Archive** — monthly rolling archive with deduplication and historical browsing
